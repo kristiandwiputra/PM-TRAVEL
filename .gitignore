@@ -1,0 +1,29 @@
+# Konfigurasi lokal dan kredensial
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python dan virtual environment
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Frontend
+node_modules/
+dist/
+.next/
+
+# Hasil kompilasi firmware
+.pio/
+build/
+
+# Log dan file sementara
+*.log
+*.tmp
+*.bak
+Thumbs.db
+.DS_Store
