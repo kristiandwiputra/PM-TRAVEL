@@ -1,0 +1,1 @@
+Kode perangkat ESP32.
