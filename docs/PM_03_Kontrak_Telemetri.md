@@ -419,3 +419,300 @@ perangkat kehilangan daya.
 7. Pesan duplikat tidak tersimpan dua kali.
 8. ESP32 restart ketika buffer masih berisi pesan.
 9. Payload yang melebihi 512 byte ditangani.
+
+## 9. Identitas Pesan, Pengaitan Perjalanan, dan Urutan Telemetri
+
+### 9.1 Identitas Pesan
+
+Setiap pesan GPS memiliki identitas yang tetap dan unik.
+
+Identitas pesan terdiri dari:
+
+- device_id: identitas perangkat.
+- boot_id: identitas sesi perangkat.
+- sequence_id: nomor urut pesan.
+- message_id: identitas unik pesan.
+
+Contoh:
+
+device_id   : PMT-001
+boot_id     : B001
+sequence_id : 15
+message_id  : PMT-001-B001-15
+
+boot_id harus berbeda untuk setiap sesi perangkat,
+termasuk setelah ESP32 melakukan restart.
+
+sequence_id bertambah ketika pesan baru dibuat.
+
+### 9.2 Identitas Saat Pengiriman Ulang
+
+Ketika koneksi MQTT terputus dan pesan dikirim ulang:
+
+1. device_id tidak berubah.
+2. boot_id tidak berubah.
+3. sequence_id tidak berubah.
+4. message_id tidak berubah.
+5. observed_at tidak berubah.
+6. Koordinat dan isi telemetri tidak berubah.
+
+Pengiriman ulang tidak boleh membuat identitas pesan baru.
+
+### 9.3 Waktu Pengamatan
+
+observed_at adalah waktu asli ketika GPS melakukan pengamatan.
+
+received_at adalah waktu ketika backend menerima pesan.
+
+Kedua waktu disimpan secara terpisah.
+
+Pesan yang terlambat tidak boleh menggunakan received_at
+untuk menggantikan observed_at.
+
+### 9.4 Pengaitan Data dengan Perjalanan
+
+Setiap kendaraan dapat memiliki perjalanan yang berbeda.
+
+Contoh:
+
+TRIP-001 : Tanjung Karang menuju Kotabumi.
+TRIP-002 : Perjalanan berikutnya.
+
+Backend harus mengaitkan data GPS dengan perjalanan
+yang berlangsung pada waktu observed_at.
+
+trip_id dari perangkat harus diperiksa kesesuaiannya
+dengan kendaraan dan periode perjalanan.
+
+Pesan tertunda tidak boleh otomatis dimasukkan
+ke perjalanan yang sedang aktif saat pesan diterima.
+
+Jika perjalanan tidak dapat ditentukan secara pasti,
+backend mencatat pesan tanpa mengarang identitas perjalanan.
+
+### 9.5 Penentuan Posisi Terbaru
+
+Posisi terbaru kendaraan ditentukan berdasarkan observed_at,
+bukan berdasarkan urutan pesan diterima backend.
+
+Syarat memperbarui posisi terakhir:
+
+1. Identitas perangkat valid.
+2. gps_valid bernilai true.
+3. Koordinat valid.
+4. observed_at tersedia dan valid.
+5. observed_at lebih baru daripada posisi terakhir.
+
+Pesan lama tetap dapat disimpan sebagai riwayat,
+tetapi tidak menggantikan posisi terbaru.
+
+### 9.6 Penanganan Pesan Duplikat
+
+Backend menggunakan identitas pesan untuk mencegah duplikasi.
+
+Aturan:
+
+1. Pesan baru disimpan satu kali.
+2. Pesan identik yang dikirim ulang tidak disimpan kembali.
+3. Backend mengirim ACK duplicate jika pesan identik
+   sudah berhasil tersimpan sebelumnya.
+4. message_id yang sama dengan isi berbeda dianggap konflik.
+5. Konflik dicatat dan tidak menghasilkan ACK sukses.
+
+### 9.7 Pengujian
+
+Pengujian meliputi:
+
+1. Pengiriman GPS normal.
+2. Pengiriman ulang pesan yang sama.
+3. Pesan datang tidak berurutan.
+4. Pesan lama diterima setelah pesan terbaru.
+5. Pesan perjalanan lama diterima saat perjalanan baru aktif.
+6. ESP32 restart dan menghasilkan boot_id baru.
+7. Pesan dengan message_id sama tetapi isi berbeda.
+8. Pesan GPS tidak valid atau observed_at tidak tersedia.
+
+## 11. Sinkronisasi Arsitektur dan Review Tim
+
+### 11.1 Tujuan
+
+Memastikan rancangan sistem PM-TRAVEL konsisten
+antara firmware, backend, database, Machine Learning,
+dan frontend.
+
+### 11.2 Alur Sistem
+
+1. GPS membaca posisi kendaraan.
+2. ESP32 membentuk data telemetri.
+3. SIM800L mengirim data melalui MQTT.
+4. Broker meneruskan pesan kepada backend.
+5. Backend memvalidasi dan menyimpan data ke PostgreSQL.
+6. Backend mengirim ACK setelah penyimpanan berhasil.
+7. Layanan ETA mengolah posisi dan data perjalanan.
+8. API menyediakan posisi kendaraan dan hasil ETA.
+9. Frontend menampilkan informasi kepada pengguna.
+
+### 11.3 Skema Entitas
+
+Entitas yang direncanakan:
+
+- users: akun dan peran pengguna.
+- vehicles: data kendaraan.
+- devices: identitas perangkat GPS.
+- trips: perjalanan kendaraan.
+- targets: titik tujuan perjalanan.
+- gps_positions: riwayat telemetri GPS.
+- eta_predictions: hasil prediksi ETA.
+
+Relasi antarentitas harus disepakati dengan tim backend.
+
+### 11.4 Sinkronisasi Antarbagian
+
+Firmware:
+- Format JSON telemetri.
+- Identitas pesan.
+- Buffer dan retry.
+- Penerimaan ACK.
+
+Backend:
+- Validasi pesan.
+- Penyimpanan database.
+- Pencegahan duplikasi.
+- Pengiriman ACK.
+- Penyediaan REST API.
+
+Machine Learning:
+- Data historis GPS.
+- Data perjalanan dan tujuan.
+- Perhitungan ETA dasar.
+- Pengembangan model prediksi.
+
+Frontend:
+- Posisi kendaraan pada peta.
+- Status pembaruan GPS.
+- ETA Hajimena dan Kotabumi.
+- Informasi perjalanan.
+
+### 11.5 Pemeriksaan Kontrak
+
+Hal yang harus diperiksa bersama:
+
+- Kesesuaian format JSON firmware dan backend.
+- Kesesuaian topik MQTT dan ACK.
+- Kesesuaian skema database dan telemetri.
+- Kesesuaian respons API dan kebutuhan frontend.
+- Kesesuaian data historis dengan kebutuhan ETA.
+
+### 11.6 Catatan Review
+
+Keputusan Infrastruktur:
+
+Tim menetapkan Biznet Gio sebagai penyedia VPS
+untuk sistem PM-TRAVEL.
+
+Seluruh komponen utama menggunakan satu VPS,
+termasuk frontend React yang dilayani Nginx.
+
+Cloudflare Pages tidak digunakan.
+
+Keputusan ini menjadi acuan implementasi
+backend, frontend, database, MQTT, dan ETA.
+
+Tanggal review: [Belum ditentukan]
+
+PIC firmware: [Arinal]
+PIC backend: [Arinal]
+PIC ML: [Sendi]
+PIC frontend: [Putra]
+
+Keputusan:
+- [ ] Format telemetri disetujui.
+- [ ] Format ACK disetujui.
+- [ ] Rancangan database disetujui.
+- [ ] Kontrak API disetujui.
+- [ ] Kebutuhan data ETA disetujui.
+
+Catatan perubahan:
+[Diisi berdasarkan hasil review tim]
+
+## 12. Keputusan Final Infrastruktur Cloud
+
+### 12.1 Provider Cloud
+
+PM-TRAVEL menggunakan Biznet Gio sebagai penyedia
+Virtual Private Server (VPS).
+
+Paket yang direncanakan adalah NEO Lite MS 4.2
+dengan spesifikasi:
+
+- CPU: 2 vCPU.
+- RAM: 4 GB.
+- Storage: 60 GB SSD.
+- Sistem Operasi: Linux.
+
+### 12.2 Penempatan Komponen
+
+Seluruh komponen utama ditempatkan pada satu VPS.
+
+1. Nginx
+   Menyajikan frontend React dan meneruskan
+   permintaan HTTPS API ke backend FastAPI.
+
+2. Mosquitto
+   Menerima telemetri MQTT dari perangkat SIM800L
+   dan meneruskan pesan kepada subscriber backend.
+
+3. FastAPI
+   Memvalidasi telemetri, mengelola perjalanan,
+   menyediakan REST API, dan mengirim ACK aplikasi.
+
+4. PostgreSQL/PostGIS
+   Menyimpan akun, kendaraan, perangkat,
+   perjalanan, riwayat GPS, dan hasil ETA.
+
+5. Layanan ETA
+   Menghitung perkiraan waktu kedatangan
+   menggunakan data lokasi dan perjalanan.
+
+6. React + Leaflet
+   Menampilkan dashboard kendaraan,
+   peta perjalanan, status GPS, dan ETA.
+
+### 12.3 Komunikasi Sistem
+
+Perangkat:
+GPS → ESP32 → SIM800L → MQTT Mosquitto.
+
+Pemrosesan:
+Mosquitto → FastAPI → PostgreSQL/PostGIS.
+
+Konfirmasi:
+FastAPI → Mosquitto → SIM800L → ESP32.
+
+Dashboard:
+Browser → HTTPS Nginx → FastAPI.
+
+Perhitungan ETA:
+FastAPI → Layanan ETA → FastAPI → Dashboard.
+
+### 12.4 Keputusan Hosting
+
+- Frontend tidak menggunakan Cloudflare Pages.
+- Frontend React disajikan langsung oleh Nginx di VPS.
+- Backend, database, broker MQTT, dan ETA
+  berjalan pada VPS yang sama.
+- Seluruh komponen dikembangkan dan diuji
+  secara lokal sebelum deployment ke VPS.
+- Akses database dibatasi agar tidak terbuka
+  langsung ke internet.
+- Komunikasi MQTT dan HTTPS dikonfigurasi
+  sesuai kebutuhan keamanan dan kemampuan perangkat.
+
+### 12.5 Status Implementasi
+
+Status: Disetujui sebagai rancangan arsitektur.
+
+Deployment VPS: Belum dilaksanakan.
+
+Pengujian integrasi seluruh komponen:
+Belum dilaksanakan.
