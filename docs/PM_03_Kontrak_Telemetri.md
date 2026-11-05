@@ -620,10 +620,10 @@ backend, frontend, database, MQTT, dan ETA.
 
 Tanggal review: [Belum ditentukan]
 
-PIC firmware: [Arinal]
-PIC backend: [Arinal]
+PIC firmware: [Putra]
+PIC backend: [Putra]
 PIC ML: [Sendi]
-PIC frontend: [Putra]
+PIC frontend: [Arinal]
 
 Keputusan:
 - [ ] Format telemetri disetujui.
