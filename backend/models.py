@@ -68,6 +68,10 @@ class Vehicle(Base):
     display_name = mapped_column(String(120), nullable=True)
     is_active = mapped_column(Boolean, nullable=False, default=True)
 
+    operator_id = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+
     last_observed_at = mapped_column(
         DateTime(timezone=True),
         nullable=True,
@@ -118,9 +122,15 @@ class Trip(Base):
         nullable=False,
     )
 
+    operator_id = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    public_code_hash = mapped_column(String(64), unique=True, nullable=True)
+    arrived_hajimena_at = mapped_column(DateTime(timezone=True), nullable=True)
+
     started_at = mapped_column(
         DateTime(timezone=True),
-        nullable=False,
+        nullable=True,
     )
 
     ended_at = mapped_column(
@@ -292,6 +302,39 @@ class ETAPrediction(Base):
     model_version = mapped_column(String(100), nullable=True)
 
     created_at = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+
+# =====================================
+# 8. KONFIGURASI TARGET RUTE PM_10
+# =====================================
+
+class RouteTarget(Base):
+    __tablename__ = "route_targets"
+
+    sequence_no = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+
+    name = mapped_column(
+        String(120),
+        nullable=False,
+    )
+
+    location = mapped_column(
+        Geometry(
+            "POINT",
+            srid=4326,
+            spatial_index=False,
+        ),
+        nullable=False,
+    )
+
+    updated_at = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),

@@ -1,3 +1,9 @@
+from trips_api import router as trips_router
+from public_api import router as public_router
+from route_targets_api import router as route_targets_router
+from devices_api import router as devices_router
+from vehicles_api import router as vehicles_router
+from auth import router as auth_router
 from fastapi import FastAPI, HTTPException
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -11,6 +17,10 @@ app = FastAPI(
     version="0.1.0",
 )
 
+app.include_router(auth_router)
+app.include_router(vehicles_router)
+app.include_router(devices_router)
+app.include_router(route_targets_router)
 
 @app.get("/health", tags=["Health"])
 def health():
@@ -44,3 +54,6 @@ def database_health():
             status_code=503,
             detail="Database unavailable",
         )
+# PM_10 protected routes
+app.include_router(trips_router)
+app.include_router(public_router)
