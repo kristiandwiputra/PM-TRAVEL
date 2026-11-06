@@ -1,0 +1,132 @@
+{
+  "start": {
+    "trip_id": "TRIP-20261106-6F45983C6E85",
+    "status": "active",
+    "public_code": "<redacted>",
+    "public_path": "/api/public/trips/<redacted>",
+    "warning": "Simpan kode ini; tidak bisa dibaca ulang. Kode nonaktif setelah trip selesai."
+  },
+  "public_during_active": {
+    "status": "active",
+    "started_at": "2026-11-06T20:50:02.825898Z",
+    "ended_at": null,
+    "arrived_hajimena_at": null,
+    "position": {
+      "latitude": null,
+      "longitude": null,
+      "speed_kmh": null,
+      "observed_at": null,
+      "data_age_seconds": null,
+      "location_status": "no_location",
+      "gps_status": "no_data"
+    },
+    "targets": [
+      {
+        "target_id": 1,
+        "sequence_no": 1,
+        "name": "Hajimena",
+        "latitude": -5.3619361,
+        "longitude": 105.2253941,
+        "remaining_straight_line_m": null,
+        "eta": {
+          "status": "unavailable",
+          "predicted_arrival_at": null,
+          "predicted_duration_seconds": null,
+          "model_version": null,
+          "reason": "PM_15_not_integrated"
+        }
+      },
+      {
+        "target_id": 2,
+        "sequence_no": 2,
+        "name": "Kotabumi",
+        "latitude": -4.8351362,
+        "longitude": 104.8962439,
+        "remaining_straight_line_m": null,
+        "eta": {
+          "status": "unavailable",
+          "predicted_arrival_at": null,
+          "predicted_duration_seconds": null,
+          "model_version": null,
+          "reason": "PM_15_not_integrated"
+        }
+      }
+    ],
+    "distance": {
+      "traveled_gps_segments_m": null,
+      "traveled_method": "sum_of_great_circle_distances_between_valid_gps_fixes",
+      "traveled_points": 0,
+      "traveled_note": "Estimasi lintasan dari fix GPS; bukan odometer atau jarak rute jalan. Outlier GPS dapat memengaruhi hasil.",
+      "remaining_method": "great_circle_direct_to_target_not_road_distance",
+      "unit": "meter"
+    }
+  },
+  "operator_detail": {
+    "status": "active",
+    "started_at": "2026-11-06T20:50:02.825898Z",
+    "ended_at": null,
+    "arrived_hajimena_at": null,
+    "position": {
+      "latitude": -5.34,
+      "longitude": 105.24,
+      "speed_kmh": 10.0,
+      "observed_at": "2026-11-06T20:50:02.861809Z",
+      "data_age_seconds": 0,
+      "location_status": "fresh",
+      "gps_status": "valid",
+      "received_at": "2026-11-06T20:50:02.862200Z",
+      "last_seen": "2026-11-06T20:50:02.879574Z",
+      "satellites": 8,
+      "hdop": 1.2
+    },
+    "targets": [
+      {
+        "target_id": 1,
+        "sequence_no": 1,
+        "name": "Hajimena",
+        "latitude": -5.3619361,
+        "longitude": 105.2253941,
+        "remaining_straight_line_m": 2926.5,
+        "eta": {
+          "status": "unavailable",
+          "predicted_arrival_at": null,
+          "predicted_duration_seconds": null,
+          "model_version": null,
+          "reason": "PM_15_not_integrated"
+        }
+      },
+      {
+        "target_id": 2,
+        "sequence_no": 2,
+        "name": "Kotabumi",
+        "latitude": -4.8351362,
+        "longitude": 104.8962439,
+        "remaining_straight_line_m": 67831.3,
+        "eta": {
+          "status": "unavailable",
+          "predicted_arrival_at": null,
+          "predicted_duration_seconds": null,
+          "model_version": null,
+          "reason": "PM_15_not_integrated"
+        }
+      }
+    ],
+    "distance": {
+      "traveled_gps_segments_m": 1569.1,
+      "traveled_method": "sum_of_great_circle_distances_between_valid_gps_fixes",
+      "traveled_points": 2,
+      "traveled_note": "Estimasi lintasan dari fix GPS; bukan odometer atau jarak rute jalan. Outlier GPS dapat memengaruhi hasil.",
+      "remaining_method": "great_circle_direct_to_target_not_road_distance",
+      "unit": "meter"
+    },
+    "trip_id": "TRIP-20261106-6F45983C6E85",
+    "vehicle_id": "3015e087-e25b-4179-873e-7572793c0e04",
+    "operator_id": "9a8a12b1-cebe-4a66-a8cc-6dd3083ac15c",
+    "plate_number": "PM10-81091A60"
+  },
+  "finish": {
+    "trip_id": "TRIP-20261106-6F45983C6E85",
+    "status": "completed",
+    "ended_at": "2026-11-06T20:50:02.915820Z"
+  }
+}
