@@ -44,6 +44,10 @@ const char APN[] = "internet";
 const char APN_USER[] = "";
 const char APN_PASS[] = "";
 
+// GPS NEO-6M dibaca kontinu setiap byte masuk (lihat loop).
+// Status/latest fix diperiksa sekali per detik, tanpa delay(1000).
+const unsigned long INTERVAL_MONITOR_GPS = 1000UL;
+// Telemetri native ke MQTT setiap 10 detik, jika slot ACK tersedia.
 const unsigned long INTERVAL_KIRIM = 10000UL;
 const unsigned long INTERVAL_KONEKSI = 10000UL;
 const unsigned long INTERVAL_ULANG_ACK = 20000UL;
@@ -54,6 +58,7 @@ const size_t MAX_PAYLOAD = 512;
 unsigned long waktuKirimTerakhir = 0;
 unsigned long waktuCekKoneksi = 0;
 unsigned long waktuKirimPending = 0;
+unsigned long waktuMonitorGPS = 0;
 
 String bootId;
 uint32_t sequenceId = 0;
@@ -122,6 +127,28 @@ bool gpsSiap() {
          gpsParser.time.age() < MAX_USIA_GPS &&
          gpsParser.speed.isValid() &&
          gpsParser.speed.age() < MAX_USIA_GPS;
+}
+
+// Pemeriksaan GPS per 1 detik untuk monitoring Serial.
+// Parser harus tetap menerima SEMUA byte NMEA secara kontinu di loop.
+// Fungsi ini tidak membuat posisi baru dan tidak mengirim MQTT.
+void monitorGPS1Detik() {
+  if (millis() - waktuMonitorGPS < INTERVAL_MONITOR_GPS) return;
+  waktuMonitorGPS = millis();
+
+  if (!gpsSiap()) {
+    Serial.println("[GPS 1s] Menunggu fix valid/waktu/kecepatan terbaru.");
+    return;
+  }
+
+  Serial.print("[GPS 1s] VALID | lat=");
+  Serial.print(gpsParser.location.lat(), 6);
+  Serial.print(" | lon=");
+  Serial.print(gpsParser.location.lng(), 6);
+  Serial.print(" | km/jam=");
+  Serial.print(gpsParser.speed.kmph(), 2);
+  Serial.print(" | age_ms=");
+  Serial.println(gpsParser.location.age());
 }
 
 String buatJSON(bool gpsValid, const String &messageId) {
@@ -286,7 +313,7 @@ void setup() {
 
   Serial.println("=== PM-TRAVEL PM_08 — NATIVE TELEMETRY ===");
   Serial.println("[PERINGATAN] Broker publik: gunakan hanya untuk uji.");
-  Serial.println("Interval sampel: 10 detik; ulang ACK: 20 detik.");
+  Serial.println("Monitor GPS: 1 detik; kirim MQTT: 10 detik; ulang ACK: 20 detik.");
   Serial.println("[SIM800L] Inisialisasi modem...");
   modem.restart();
   Serial.print("[SIM800L] Modem: ");
@@ -294,7 +321,9 @@ void setup() {
 }
 
 void loop() {
+  // Jangan diganti dengan delay(1000): setiap byte GPS harus segera diproses.
   while (gpsSerial.available()) gpsParser.encode(gpsSerial.read());
+  monitorGPS1Detik();
 
   if (mqttClient.connected()) mqttClient.poll();
   cekKoneksi();
