@@ -87,6 +87,219 @@
 .corridor-bar > div > svg { transform: rotate(-90deg); color: #a5b29c; }
 .map-shell { display: grid; grid-template-columns: minmax(0, 1fr) 282px; border: 1px solid #e0e7db; border-radius: 0 0 12px 12px; overflow: hidden; background: #fff; }
 .map-canvas { position: relative; min-width: 0; height: 432px; }
+
+/* =====================================
+ * TAHAP 1: FLOATING PILL (HALLMARK IOT)
+ * ===================================== */
+.floating-pill-wrapper {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: calc(100% - 28px);
+  pointer-events: auto;
+}
+
+.floating-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(24, 62, 50, 0.88);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  color: #fff;
+  box-shadow: 0 10px 25px -5px rgba(10, 30, 24, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  user-select: none;
+  font-size: 11px;
+  transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.floating-pill:hover {
+  background: rgba(20, 52, 42, 0.94);
+  box-shadow: 0 14px 28px -6px rgba(10, 30, 24, 0.55);
+}
+
+.hallmark-pulse-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+}
+
+.hallmark-pulse-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  opacity: 0.75;
+}
+
+.hallmark-pulse-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.hallmark-pulse--mint .hallmark-pulse-ring {
+  background: #4ade80;
+}
+.hallmark-pulse--mint .hallmark-pulse-dot {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.hallmark-pulse--amber .hallmark-pulse-ring {
+  background: #fbbf24;
+}
+.hallmark-pulse--amber .hallmark-pulse-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+.hallmark-pulse--rose .hallmark-pulse-ring {
+  background: #f87171;
+}
+.hallmark-pulse--rose .hallmark-pulse-dot {
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+.floating-pill-plate {
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #f1f7ed;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.floating-pill-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.floating-pill-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+  color: #d8ee9b;
+  font-weight: 600;
+}
+
+.floating-pill-status {
+  color: #cbdad0;
+  font-size: 10px;
+}
+
+.floating-pill-toggle {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #d8ee9b;
+  margin-left: 2px;
+}
+
+.floating-pill-card {
+  margin-top: 8px;
+  width: 340px;
+  max-width: 92vw;
+  background: rgba(22, 50, 41, 0.95);
+  backdrop-filter: blur(16px) saturate(190%);
+  -webkit-backdrop-filter: blur(16px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: #fff;
+  box-shadow: 0 18px 36px -8px rgba(10, 30, 24, 0.65);
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.floating-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 9px;
+}
+
+.floating-card-header strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f3f8ee;
+}
+
+.floating-card-header small {
+  font-size: 10px;
+  color: #9cb29e;
+}
+
+.floating-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  font-size: 10px;
+}
+
+.floating-card-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.floating-card-item span {
+  font-size: 9px;
+  color: #9db29f;
+}
+
+.floating-card-item strong {
+  color: #eaf3e5;
+  font-size: 11px;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.floating-card-action {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 0;
+  background: #d8ee9b;
+  color: #173c30;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.floating-card-action:hover {
+  background: #e2f5b1;
+}
 .travel-map { width: 100%; height: 100%; z-index: 0; background: #e8eddf; font-family: inherit; }
 .map-shell .leaflet-control-zoom { border: 1px solid #e0e6d9; border-radius: 8px; overflow: hidden; box-shadow: 0 3px 10px #284a3112; }
 .map-shell .leaflet-control-zoom a { color: #48603b; width: 30px; height: 30px; line-height: 30px; font-weight: 400; }

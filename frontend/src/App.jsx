@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Activity, AlertTriangle, ArrowRight, ArrowUpRight, BusFront, Check, ChevronDown, CircleHelp, Clock3,
+  Activity, AlertTriangle, ArrowRight, ArrowUpRight, BusFront, Check, ChevronDown, ChevronUp, CircleHelp, Clock3,
   Compass, Gauge, LayoutDashboard, ListFilter, LogOut, MapPin,
   Menu, Navigation, RadioTower, RefreshCw, Route, Search, Settings2,
-  Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, ShieldCheck, WifiOff, X,
+  Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, ShieldCheck, WifiOff, X, Zap,
 } from 'lucide-react'
+import { motion, AnimatePresence } from 'motion/react'
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { ApiError, getProfile, loadDashboard, login, REFRESH_INTERVAL_MS } from './api'
@@ -195,11 +196,140 @@ function VehicleList({ vehicles, selectedId, onSelect, search, setSearch, filter
   )
 }
 
-function LiveMap({ vehicles, selectedVehicle, focusKey, targets, children }) {
+function FloatingPill({ selectedVehicle, onCenter }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const status = selectedVehicle?.locationStatus ?? 'no_location'
+  const tone = statusTone(status)
+  const plate = selectedVehicle?.plate ?? 'PMT-001'
+  const speed = selectedVehicle?.speed
+  const speedText = speed !== null && speed !== undefined
+    ? `${Number(speed).toFixed(1)} km/jam`
+    : 'Diam / Parkir'
+
+  const observedAtText = selectedVehicle?.observedAt
+    ? formatTime(selectedVehicle.observedAt)
+    : 'Belum ada data GPS'
+
+  const positionText = selectedVehicle?.position
+    ? `${selectedVehicle.position[0].toFixed(5)}, ${selectedVehicle.position[1].toFixed(5)}`
+    : 'Koordinat belum fix'
+
+  return (
+    <div className="floating-pill-wrapper">
+      <motion.div
+        className="floating-pill"
+        onClick={() => setExpanded((prev) => !prev)}
+        initial={{ opacity: 0, y: -15, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        aria-label="Status telemetri IoT kendaraan"
+      >
+        <span className={`hallmark-pulse-wrapper hallmark-pulse--${tone}`}>
+          <motion.span
+            className="hallmark-pulse-ring"
+            animate={{
+              scale: [1, 1.9, 1],
+              opacity: [0.75, 0, 0.75],
+            }}
+            transition={{
+              duration: status === 'fresh' ? 2 : 3,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          />
+          <span className="hallmark-pulse-dot" />
+        </span>
+
+        <span className="floating-pill-plate">
+          <BusFront size={13} />
+          {plate}
+        </span>
+
+        <span className="floating-pill-divider" aria-hidden="true" />
+
+        <span className="floating-pill-speed">
+          <Zap size={12} />
+          {speedText}
+        </span>
+
+        <span className="floating-pill-divider" aria-hidden="true" />
+
+        <span className="floating-pill-status">
+          {statusText[status] ?? status}
+        </span>
+
+        <span className="floating-pill-toggle" aria-hidden="true">
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </span>
+      </motion.div>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            className="floating-pill-card"
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+          >
+            <div className="floating-card-header">
+              <div>
+                <strong>Telemetri IoT &bull; {plate}</strong>
+                <small>Pengiriman ESP32 per 10 detik</small>
+              </div>
+              <StatusPill tone={tone}>
+                {statusText[status] ?? status}
+              </StatusPill>
+            </div>
+
+            <div className="floating-card-grid">
+              <div className="floating-card-item">
+                <span>Kecepatan</span>
+                <strong>{speedText}</strong>
+              </div>
+              <div className="floating-card-item">
+                <span>Usia GPS</span>
+                <strong>{selectedVehicle?.ageSeconds !== null && selectedVehicle?.ageSeconds !== undefined ? `${selectedVehicle.ageSeconds} detik` : '—'}</strong>
+              </div>
+              <div className="floating-card-item">
+                <span>Koordinat</span>
+                <strong>{positionText}</strong>
+              </div>
+              <div className="floating-card-item">
+                <span>Waktu GPS</span>
+                <strong>{observedAtText}</strong>
+              </div>
+            </div>
+
+            {selectedVehicle?.position && onCenter && (
+              <button
+                type="button"
+                className="floating-card-action"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onCenter()
+                }}
+              >
+                <Compass size={14} /> Pusatkan di Peta
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function LiveMap({ vehicles, selectedVehicle, focusKey, targets, onCenter, children }) {
   const points = [routeOrigin, ...(targets.length ? targets : defaultTargets)]
   return (
     <div className="map-shell">
       <div className="map-canvas">
+      <FloatingPill selectedVehicle={selectedVehicle} onCenter={onCenter} />
       <MapContainer center={[-5.17, 105.04]} zoom={10} scrollWheelZoom={false} className="travel-map">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -310,7 +440,13 @@ function Dashboard({ data, sync, onRefresh, onNavigate, search, setSearch, filte
       </div>
 
       <div className="corridor-bar"><span><Route size={15} />KORIDOR LAMPUNG</span><div>Tanjung Karang <ChevronDown size={13} /> Hajimena <ChevronDown size={13} /> Kotabumi</div></div>
-      <LiveMap vehicles={vehicles} selectedVehicle={selectedVehicle} focusKey={focusKey} targets={targets}>
+      <LiveMap
+        vehicles={vehicles}
+        selectedVehicle={selectedVehicle}
+        focusKey={focusKey}
+        targets={targets}
+        onCenter={() => setFocusKey((key) => key + 1)}
+      >
         <VehicleList
           vehicles={visibleVehicles}
           selectedId={selectedVehicle?.id}
