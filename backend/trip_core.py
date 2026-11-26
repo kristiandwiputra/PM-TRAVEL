@@ -1,7 +1,8 @@
 """Helpers for PM_10. No public access to raw GPS rows."""
-from datetime import datetime, timezone
+from datetime import timezone
 from fastapi import HTTPException
 from sqlalchemy import text
+from telemetry_status import location_freshness
 
 
 def iso(dt):
@@ -40,12 +41,11 @@ def trip_targets(conn, trip_id):
 
 def location_for_trip(conn, trip_id, include_internal=False):
     # GPS position must belong to this trip; another trip's vehicle cache is not used.
+    # trip_id was validated at ingestion; current device assignment must not erase history.
     valid = conn.execute(text('''
         SELECT p.observed_at, p.received_at, p.latitude, p.longitude,
                p.speed_kmh, p.satellites, p.hdop
         FROM gps_positions p
-        JOIN devices d ON d.device_id=p.device_id
-        JOIN trips t ON t.trip_id=p.trip_id AND t.vehicle_id=d.vehicle_id
         WHERE p.trip_id=:trip_id AND p.gps_valid=TRUE
           AND p.observed_at IS NOT NULL AND p.location IS NOT NULL
           AND p.latitude BETWEEN -90 AND 90 AND p.longitude BETWEEN -180 AND 180
@@ -53,8 +53,6 @@ def location_for_trip(conn, trip_id, include_internal=False):
     '''), {'trip_id': trip_id}).mappings().first()
     activity = conn.execute(text('''
         SELECT received_at, gps_valid FROM gps_positions p
-        JOIN devices d ON d.device_id=p.device_id
-        JOIN trips t ON t.trip_id=p.trip_id AND t.vehicle_id=d.vehicle_id
         WHERE p.trip_id=:trip_id ORDER BY p.received_at DESC, p.id DESC LIMIT 1
     '''), {'trip_id': trip_id}).mappings().first()
     result = {'latitude': None, 'longitude': None, 'speed_kmh': None,
@@ -64,12 +62,9 @@ def location_for_trip(conn, trip_id, include_internal=False):
         result['gps_status'] = 'valid' if activity['gps_valid'] else 'invalid'
     if valid:
         at = valid['observed_at']
-        age = (datetime.now(timezone.utc) - at).total_seconds()
-        status = ('invalid_timestamp' if age < 0 else 'fresh' if age <= 30
-                  else 'stale' if age <= 60 else 'no_update')
         result.update(latitude=valid['latitude'], longitude=valid['longitude'],
-                      speed_kmh=valid['speed_kmh'], observed_at=iso(at),
-                      data_age_seconds=max(0, int(age)), location_status=status)
+                      speed_kmh=valid['speed_kmh'], observed_at=iso(at))
+        result.update(location_freshness(at, has_location=True))
     if include_internal:
         result['received_at'] = iso(valid['received_at']) if valid else None
         result['last_seen'] = iso(activity['received_at']) if activity else None
@@ -85,7 +80,6 @@ def distance_for_trip(conn, trip_id, location, targets):
          SELECT p.observed_at, p.id, p.location,
                 LAG(p.location) OVER (ORDER BY p.observed_at, p.id) AS prev
          FROM gps_positions p JOIN trips t ON t.trip_id=p.trip_id
-         JOIN devices d ON d.device_id=p.device_id AND d.vehicle_id=t.vehicle_id
          WHERE p.trip_id=:trip_id AND p.gps_valid=TRUE
            AND p.observed_at IS NOT NULL AND p.location IS NOT NULL
            AND p.observed_at >= t.started_at
@@ -131,6 +125,8 @@ def trip_view(conn, trip, include_internal=False):
         t['eta'] = {'status': 'unavailable', 'predicted_arrival_at': None,
                     'predicted_duration_seconds': None, 'model_version': None,
                     'reason': 'PM_15_not_integrated'}
+        if not include_internal:
+            t.pop('target_id')
     payload = {'status': trip['status'], 'started_at': iso(trip['started_at']),
                'ended_at': iso(trip['ended_at']),
                'arrived_hajimena_at': iso(trip['arrived_hajimena_at']),

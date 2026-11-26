@@ -1,9 +1,8 @@
 
-from datetime import datetime, timezone
-
 from sqlalchemy import text
 
 from database import engine
+from telemetry_status import location_freshness
 
 
 def get_latest_location(vehicle_id: str):
@@ -20,7 +19,8 @@ def get_latest_location(vehicle_id: str):
             gps.gps_valid,
             gps.trip_id,
 
-            activity.last_seen_at
+            activity.last_seen_at,
+            activity.latest_gps_valid
 
         FROM vehicles v
 
@@ -42,11 +42,14 @@ def get_latest_location(vehicle_id: str):
 
         LEFT JOIN LATERAL (
             SELECT
-                MAX(p.received_at) AS last_seen_at
+                p.received_at AS last_seen_at,
+                p.gps_valid AS latest_gps_valid
             FROM gps_positions p
             JOIN devices d
                 ON d.device_id = p.device_id
             WHERE d.vehicle_id = v.id
+            ORDER BY p.received_at DESC, p.id DESC
+            LIMIT 1
         ) activity ON TRUE
 
         WHERE v.id = CAST(:vehicle_id AS UUID)
@@ -62,32 +65,9 @@ def get_latest_location(vehicle_id: str):
         return None
 
     result = dict(row)
-    observed_at = result["observed_at"]
-
-    if (
-        observed_at is None
-        or result["latitude"] is None
-        or result["longitude"] is None
-    ):
-        result["data_age_seconds"] = None
-        result["location_status"] = "no_location"
-        return result
-
-    age = (
-        datetime.now(timezone.utc) - observed_at
-    ).total_seconds()
-
-    if age < 0:
-        result["data_age_seconds"] = 0
-        result["location_status"] = "invalid_timestamp"
-    else:
-        result["data_age_seconds"] = int(age)
-
-        if age <= 30:
-            result["location_status"] = "fresh"
-        elif age <= 60:
-            result["location_status"] = "stale"
-        else:
-            result["location_status"] = "no_update"
-
+    latest_gps_valid = result.pop('latest_gps_valid')
+    result['gps_status'] = ('no_data' if latest_gps_valid is None
+                            else 'valid' if latest_gps_valid else 'invalid')
+    result.update(location_freshness(result['observed_at'],
+                  has_location=result['latitude'] is not None and result['longitude'] is not None))
     return result

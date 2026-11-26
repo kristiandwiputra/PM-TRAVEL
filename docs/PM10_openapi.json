@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PM-TRAVEL Backend API",
-    "description": "Backend sistem pelacakan kendaraan PM-TRAVEL",
-    "version": "0.1.0"
+    "description": "API operasional PM-TRAVEL untuk koridor Tanjung Karang → Hajimena → Kotabumi.\n\n**Akses:** admin mengelola armada; operator hanya mengakses sumber daya miliknya. Masuk melalui `/api/auth/login`, lalu masukkan JWT pada **Authorize**. Penumpang menggunakan kode publik yang hanya berlaku selama trip aktif.\n\n**Waktu dan jarak:** waktu berzona UTC, usia posisi dihitung dari `observed_at`, jarak dalam meter. Jarak GPS/garis lurus bukan jarak rute jalan. ETA tetap `unavailable` sampai integrasi PM_15 tersedia.",
+    "version": "0.2.0"
   },
   "paths": {
     "/api/auth/login": {
@@ -11,7 +11,8 @@
         "tags": [
           "Authentication"
         ],
-        "summary": "Login",
+        "summary": "Masuk sebagai admin atau operator",
+        "description": "JWT berlaku 30 menit. Kirim email dan password sebagai JSON.",
         "operationId": "login_api_auth_login_post",
         "requestBody": {
           "content": {
@@ -34,6 +35,36 @@
               }
             }
           },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {
@@ -52,14 +83,46 @@
         "tags": [
           "Authentication"
         ],
-        "summary": "My Profile",
+        "summary": "Profil akun yang sedang masuk",
         "operationId": "my_profile_api_auth_me_get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -76,7 +139,7 @@
         "tags": [
           "Vehicles"
         ],
-        "summary": "List Vehicles",
+        "summary": "Daftar kendaraan sesuai kewenangan",
         "operationId": "list_vehicles_api_vehicles__get",
         "security": [
           {
@@ -102,6 +165,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 100000,
               "minimum": 0,
               "default": 0,
               "title": "Offset"
@@ -113,7 +177,63 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VehicleResponse"
+                  },
+                  "title": "Response List Vehicles Api Vehicles  Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -133,7 +253,7 @@
         "tags": [
           "Vehicles"
         ],
-        "summary": "Create Vehicle",
+        "summary": "Daftarkan kendaraan (admin)",
         "operationId": "create_vehicle_api_vehicles__post",
         "security": [
           {
@@ -155,7 +275,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -177,7 +349,7 @@
         "tags": [
           "Vehicles"
         ],
-        "summary": "Latest Vehicle Location",
+        "summary": "Posisi valid terakhir dan status pesan GPS terbaru",
         "operationId": "latest_vehicle_location_api_vehicles__vehicle_id__location_latest_get",
         "security": [
           {
@@ -201,7 +373,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleLocationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -223,7 +447,7 @@
         "tags": [
           "Vehicles"
         ],
-        "summary": "Vehicle Detail",
+        "summary": "Detail kendaraan",
         "operationId": "vehicle_detail_api_vehicles__vehicle_id__get",
         "security": [
           {
@@ -247,7 +471,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -267,7 +543,7 @@
         "tags": [
           "Vehicles"
         ],
-        "summary": "Update Vehicle",
+        "summary": "Perbarui nama, status, atau penugasan kendaraan",
         "operationId": "update_vehicle_api_vehicles__vehicle_id__patch",
         "security": [
           {
@@ -301,7 +577,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/VehicleResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -323,7 +651,7 @@
         "tags": [
           "Devices"
         ],
-        "summary": "List Devices",
+        "summary": "Daftar perangkat tanpa kredensial MQTT",
         "operationId": "list_devices_api_devices__get",
         "security": [
           {
@@ -349,6 +677,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 100000,
               "minimum": 0,
               "default": 0,
               "title": "Offset"
@@ -360,7 +689,63 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeviceDetailResponse"
+                  },
+                  "title": "Response List Devices Api Devices  Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -380,7 +765,7 @@
         "tags": [
           "Devices"
         ],
-        "summary": "Create Device",
+        "summary": "Daftarkan perangkat (admin)",
         "operationId": "create_device_api_devices__post",
         "security": [
           {
@@ -402,7 +787,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -424,7 +861,7 @@
         "tags": [
           "Devices"
         ],
-        "summary": "Device Detail",
+        "summary": "Detail perangkat sesuai kewenangan",
         "operationId": "device_detail_api_devices__device_id__get",
         "security": [
           {
@@ -447,7 +884,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -469,7 +958,7 @@
         "tags": [
           "Devices"
         ],
-        "summary": "Update Device Status",
+        "summary": "Aktifkan atau nonaktifkan perangkat (admin)",
         "operationId": "update_device_status_api_devices__device_id__status_patch",
         "security": [
           {
@@ -502,7 +991,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -524,7 +1065,7 @@
         "tags": [
           "Devices"
         ],
-        "summary": "Reassign Device",
+        "summary": "Pindahkan perangkat ketika kedua kendaraan tidak memiliki trip aktif",
         "operationId": "reassign_device_api_devices__device_id__vehicle_patch",
         "security": [
           {
@@ -557,7 +1098,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -579,14 +1172,70 @@
         "tags": [
           "Route Targets"
         ],
-        "summary": "List Route Targets",
+        "summary": "Daftar dua target koridor",
         "operationId": "list_route_targets_api_route_targets__get",
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RouteTargetResponse"
+                  },
+                  "type": "array",
+                  "title": "Response List Route Targets Api Route Targets  Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           }
@@ -603,7 +1252,7 @@
         "tags": [
           "Route Targets"
         ],
-        "summary": "Route Target Detail",
+        "summary": "Detail target koridor",
         "operationId": "route_target_detail_api_route_targets__sequence_no__get",
         "security": [
           {
@@ -626,7 +1275,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RouteTargetResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -646,7 +1347,7 @@
         "tags": [
           "Route Targets"
         ],
-        "summary": "Update Route Target",
+        "summary": "Perbarui target untuk trip berikutnya (admin)",
         "operationId": "update_route_target_api_route_targets__sequence_no__put",
         "security": [
           {
@@ -679,7 +1380,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/RouteTargetResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -696,50 +1449,12 @@
         }
       }
     },
-    "/health": {
-      "get": {
-        "tags": [
-          "Health"
-        ],
-        "summary": "Health",
-        "operationId": "health_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/health/db": {
-      "get": {
-        "tags": [
-          "Health"
-        ],
-        "summary": "Database Health",
-        "operationId": "database_health_health_db_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/trips/": {
       "post": {
         "tags": [
           "Trips"
         ],
-        "summary": "Create Trip",
+        "summary": "Buat trip planned dan salin kedua target",
         "operationId": "create_trip_api_trips__post",
         "security": [
           {
@@ -761,7 +1476,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TripCreatedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -781,7 +1548,7 @@
         "tags": [
           "Trips"
         ],
-        "summary": "List Trips",
+        "summary": "Riwayat perjalanan sesuai kewenangan",
         "operationId": "list_trips_api_trips__get",
         "security": [
           {
@@ -796,6 +1563,12 @@
             "schema": {
               "anyOf": [
                 {
+                  "enum": [
+                    "planned",
+                    "active",
+                    "completed",
+                    "canceled"
+                  ],
                   "type": "string"
                 },
                 {
@@ -835,7 +1608,63 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TripSummary"
+                  },
+                  "title": "Response List Trips Api Trips  Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -857,7 +1686,7 @@
         "tags": [
           "Trips"
         ],
-        "summary": "Get Trip",
+        "summary": "Detail perjalanan, posisi, jarak, dan target",
         "operationId": "get_trip_api_trips__trip_id__get",
         "security": [
           {
@@ -880,7 +1709,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorTripResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -902,7 +1783,7 @@
         "tags": [
           "Trips"
         ],
-        "summary": "Start Trip",
+        "summary": "Mulai perjalanan dan terbitkan kode publik sekali",
         "operationId": "start_trip_api_trips__trip_id__start_post",
         "security": [
           {
@@ -925,7 +1806,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TripStartedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -947,7 +1880,7 @@
         "tags": [
           "Trips"
         ],
-        "summary": "Arrive Hajimena",
+        "summary": "Catat tiba Hajimena; perjalanan tetap aktif",
         "operationId": "arrive_hajimena_api_trips__trip_id__arrive_hajimena_post",
         "security": [
           {
@@ -970,7 +1903,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TripArrivalResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -992,7 +1977,7 @@
         "tags": [
           "Trips"
         ],
-        "summary": "Complete Trip",
+        "summary": "Selesaikan di Kotabumi setelah Hajimena dan cabut kode publik",
         "operationId": "complete_trip_api_trips__trip_id__complete_post",
         "security": [
           {
@@ -1015,7 +2000,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TripEndedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -1037,7 +2074,7 @@
         "tags": [
           "Trips"
         ],
-        "summary": "Cancel Trip",
+        "summary": "Batalkan perjalanan planned/active dan cabut kode publik",
         "operationId": "cancel_trip_api_trips__trip_id__cancel_post",
         "security": [
           {
@@ -1060,7 +2097,59 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/TripEndedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -1082,7 +2171,7 @@
         "tags": [
           "Trips"
         ],
-        "summary": "Trip Positions",
+        "summary": "Riwayat GPS internal, maksimal 200 baris per permintaan",
         "operationId": "trip_positions_api_trips__trip_id__positions_get",
         "security": [
           {
@@ -1129,7 +2218,63 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GPSHistoryResponse"
+                  },
+                  "title": "Response Trip Positions Api Trips  Trip Id  Positions Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Token tidak ada, tidak valid, atau kedaluwarsa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Peran akun tidak diizinkan melakukan tindakan ini.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Data tidak ditemukan atau bukan kewenangan akun.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Konflik data atau transisi status perjalanan.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -1151,7 +2296,8 @@
         "tags": [
           "Passenger"
         ],
-        "summary": "Passenger Trip",
+        "summary": "Ringkasan perjalanan aktif untuk penumpang",
+        "description": "Tanpa login; memerlukan kode publik aktif. Tidak mengembalikan ID internal atau riwayat GPS.",
         "operationId": "passenger_trip_api_public_trips__code__get",
         "parameters": [
           {
@@ -1169,7 +2315,29 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/PassengerTripResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Kode salah, dicabut, atau perjalanan tidak aktif.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Koneksi layanan data sementara tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
               }
             }
           },
@@ -1185,10 +2353,91 @@
           }
         }
       }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Periksa proses API tanpa menghubungi database",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/db": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Periksa koneksi PostgreSQL dan ekstensi PostGIS",
+        "operationId": "database_health_health_db_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseHealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database/PostGIS tidak tersedia.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "DatabaseHealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          },
+          "database": {
+            "type": "string",
+            "title": "Database"
+          },
+          "user": {
+            "type": "string",
+            "title": "User"
+          },
+          "postgis": {
+            "type": "string",
+            "title": "Postgis"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "database",
+          "user",
+          "postgis"
+        ],
+        "title": "DatabaseHealthResponse"
+      },
       "DeviceCreate": {
         "properties": {
           "device_id": {
@@ -1210,6 +2459,7 @@
             "title": "Mqtt Username"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "device_id",
@@ -1217,6 +2467,35 @@
           "mqtt_username"
         ],
         "title": "DeviceCreate"
+      },
+      "DeviceDetailResponse": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "vehicle_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Vehicle Id"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "plate_number": {
+            "type": "string",
+            "title": "Plate Number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "vehicle_id",
+          "is_active",
+          "plate_number"
+        ],
+        "title": "DeviceDetailResponse"
       },
       "DeviceReassign": {
         "properties": {
@@ -1226,11 +2505,36 @@
             "title": "Vehicle Id"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "vehicle_id"
         ],
         "title": "DeviceReassign"
+      },
+      "DeviceResponse": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "title": "Device Id"
+          },
+          "vehicle_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Vehicle Id"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "device_id",
+          "vehicle_id",
+          "is_active"
+        ],
+        "title": "DeviceResponse"
       },
       "DeviceStatusUpdate": {
         "properties": {
@@ -1239,11 +2543,122 @@
             "title": "Is Active"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "is_active"
         ],
         "title": "DeviceStatusUpdate"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorResponse"
+      },
+      "GPSHistoryResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Received At"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "speed_kmh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed Kmh"
+          },
+          "gps_valid": {
+            "type": "boolean",
+            "title": "Gps Valid"
+          },
+          "satellites": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Satellites"
+          },
+          "hdop": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hdop"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "observed_at",
+          "received_at",
+          "latitude",
+          "longitude",
+          "speed_kmh",
+          "gps_valid",
+          "satellites",
+          "hdop"
+        ],
+        "title": "GPSHistoryResponse"
       },
       "HTTPValidationError": {
         "properties": {
@@ -1257,6 +2672,25 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "service"
+        ],
+        "title": "HealthResponse"
       },
       "LoginRequest": {
         "properties": {
@@ -1272,12 +2706,544 @@
             "title": "Password"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "email",
           "password"
         ],
         "title": "LoginRequest"
+      },
+      "OperatorPosition": {
+        "properties": {
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "speed_kmh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed Kmh"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "data_age_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Age Seconds"
+          },
+          "location_status": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "stale",
+              "no_update",
+              "no_location",
+              "invalid_timestamp"
+            ],
+            "title": "Location Status"
+          },
+          "gps_status": {
+            "type": "string",
+            "enum": [
+              "valid",
+              "invalid",
+              "no_data"
+            ],
+            "title": "Gps Status"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "last_seen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen"
+          },
+          "satellites": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Satellites"
+          },
+          "hdop": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hdop"
+          }
+        },
+        "type": "object",
+        "required": [
+          "latitude",
+          "longitude",
+          "speed_kmh",
+          "observed_at",
+          "data_age_seconds",
+          "location_status",
+          "gps_status",
+          "received_at",
+          "last_seen",
+          "satellites",
+          "hdop"
+        ],
+        "title": "OperatorPosition"
+      },
+      "OperatorTarget": {
+        "properties": {
+          "sequence_no": {
+            "type": "integer",
+            "title": "Sequence No"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "remaining_straight_line_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Straight Line M"
+          },
+          "eta": {
+            "$ref": "#/components/schemas/UnavailableETA"
+          },
+          "target_id": {
+            "type": "integer",
+            "title": "Target Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sequence_no",
+          "name",
+          "latitude",
+          "longitude",
+          "remaining_straight_line_m",
+          "eta",
+          "target_id"
+        ],
+        "title": "OperatorTarget"
+      },
+      "OperatorTripResponse": {
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "title": "Trip Id"
+          },
+          "vehicle_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Vehicle Id"
+          },
+          "operator_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator Id"
+          },
+          "plate_number": {
+            "type": "string",
+            "title": "Plate Number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "active",
+              "completed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "arrived_hajimena_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrived Hajimena At"
+          },
+          "position": {
+            "$ref": "#/components/schemas/OperatorPosition"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/OperatorTarget"
+            },
+            "type": "array",
+            "title": "Targets"
+          },
+          "distance": {
+            "$ref": "#/components/schemas/TripDistance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trip_id",
+          "vehicle_id",
+          "operator_id",
+          "plate_number",
+          "status",
+          "started_at",
+          "ended_at",
+          "arrived_hajimena_at",
+          "position",
+          "targets",
+          "distance"
+        ],
+        "title": "OperatorTripResponse"
+      },
+      "PassengerPosition": {
+        "properties": {
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "speed_kmh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed Kmh"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "data_age_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Age Seconds"
+          },
+          "location_status": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "stale",
+              "no_update",
+              "no_location",
+              "invalid_timestamp"
+            ],
+            "title": "Location Status"
+          },
+          "gps_status": {
+            "type": "string",
+            "enum": [
+              "valid",
+              "invalid",
+              "no_data"
+            ],
+            "title": "Gps Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "latitude",
+          "longitude",
+          "speed_kmh",
+          "observed_at",
+          "data_age_seconds",
+          "location_status",
+          "gps_status"
+        ],
+        "title": "PassengerPosition"
+      },
+      "PassengerTarget": {
+        "properties": {
+          "sequence_no": {
+            "type": "integer",
+            "title": "Sequence No"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "remaining_straight_line_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Straight Line M"
+          },
+          "eta": {
+            "$ref": "#/components/schemas/UnavailableETA"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sequence_no",
+          "name",
+          "latitude",
+          "longitude",
+          "remaining_straight_line_m",
+          "eta"
+        ],
+        "title": "PassengerTarget"
+      },
+      "PassengerTripResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "active",
+            "title": "Status"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "arrived_hajimena_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrived Hajimena At"
+          },
+          "position": {
+            "$ref": "#/components/schemas/PassengerPosition"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/PassengerTarget"
+            },
+            "type": "array",
+            "title": "Targets"
+          },
+          "distance": {
+            "$ref": "#/components/schemas/TripDistance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "started_at",
+          "ended_at",
+          "arrived_hajimena_at",
+          "position",
+          "targets",
+          "distance"
+        ],
+        "title": "PassengerTripResponse"
+      },
+      "RouteTargetResponse": {
+        "properties": {
+          "sequence_no": {
+            "type": "integer",
+            "title": "Sequence No"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "latitude": {
+            "type": "number",
+            "title": "Latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "title": "Longitude"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sequence_no",
+          "name",
+          "latitude",
+          "longitude",
+          "updated_at"
+        ],
+        "title": "RouteTargetResponse"
       },
       "RouteTargetUpdate": {
         "properties": {
@@ -1300,6 +3266,7 @@
             "title": "Longitude"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "name",
@@ -1326,6 +3293,36 @@
         ],
         "title": "TokenResponse"
       },
+      "TripArrivalResponse": {
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "title": "Trip Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "active",
+            "title": "Status"
+          },
+          "arrived_hajimena_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Arrived Hajimena At"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trip_id",
+          "status",
+          "arrived_hajimena_at",
+          "message"
+        ],
+        "title": "TripArrivalResponse"
+      },
       "TripCreate": {
         "properties": {
           "vehicle_id": {
@@ -1334,11 +3331,285 @@
             "title": "Vehicle Id"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "vehicle_id"
         ],
         "title": "TripCreate"
+      },
+      "TripCreatedResponse": {
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "title": "Trip Id"
+          },
+          "vehicle_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Vehicle Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "planned",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trip_id",
+          "vehicle_id",
+          "status",
+          "message"
+        ],
+        "title": "TripCreatedResponse"
+      },
+      "TripDistance": {
+        "properties": {
+          "traveled_gps_segments_m": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Traveled Gps Segments M"
+          },
+          "traveled_method": {
+            "type": "string",
+            "title": "Traveled Method"
+          },
+          "traveled_points": {
+            "type": "integer",
+            "title": "Traveled Points"
+          },
+          "traveled_note": {
+            "type": "string",
+            "title": "Traveled Note"
+          },
+          "remaining_method": {
+            "type": "string",
+            "title": "Remaining Method"
+          },
+          "unit": {
+            "type": "string",
+            "const": "meter",
+            "title": "Unit"
+          }
+        },
+        "type": "object",
+        "required": [
+          "traveled_gps_segments_m",
+          "traveled_method",
+          "traveled_points",
+          "traveled_note",
+          "remaining_method",
+          "unit"
+        ],
+        "title": "TripDistance"
+      },
+      "TripEndedResponse": {
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "title": "Trip Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "ended_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Ended At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trip_id",
+          "status",
+          "ended_at"
+        ],
+        "title": "TripEndedResponse"
+      },
+      "TripStartedResponse": {
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "title": "Trip Id"
+          },
+          "status": {
+            "type": "string",
+            "const": "active",
+            "title": "Status"
+          },
+          "public_code": {
+            "type": "string",
+            "title": "Public Code",
+            "description": "Kode acak 192-bit; hanya dikembalikan saat mulai. Simpan seperti kunci akses."
+          },
+          "public_path": {
+            "type": "string",
+            "title": "Public Path"
+          },
+          "warning": {
+            "type": "string",
+            "title": "Warning"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trip_id",
+          "status",
+          "public_code",
+          "public_path",
+          "warning"
+        ],
+        "title": "TripStartedResponse"
+      },
+      "TripSummary": {
+        "properties": {
+          "trip_id": {
+            "type": "string",
+            "title": "Trip Id"
+          },
+          "vehicle_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Vehicle Id"
+          },
+          "plate_number": {
+            "type": "string",
+            "title": "Plate Number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "active",
+              "completed",
+              "canceled"
+            ],
+            "title": "Status"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "arrived_hajimena_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arrived Hajimena At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "trip_id",
+          "vehicle_id",
+          "plate_number",
+          "status",
+          "started_at",
+          "ended_at",
+          "arrived_hajimena_at"
+        ],
+        "title": "TripSummary"
+      },
+      "UnavailableETA": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "unavailable",
+            "title": "Status"
+          },
+          "predicted_arrival_at": {
+            "type": "null",
+            "title": "Predicted Arrival At"
+          },
+          "predicted_duration_seconds": {
+            "type": "null",
+            "title": "Predicted Duration Seconds"
+          },
+          "model_version": {
+            "type": "null",
+            "title": "Model Version"
+          },
+          "reason": {
+            "type": "string",
+            "const": "PM_15_not_integrated",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "reason"
+        ],
+        "title": "UnavailableETA"
+      },
+      "UserProfile": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "operator",
+              "admin"
+            ],
+            "title": "Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "role"
+        ],
+        "title": "UserProfile"
       },
       "ValidationError": {
         "properties": {
@@ -1413,11 +3684,216 @@
             "title": "Operator Id"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "required": [
           "plate_number"
         ],
         "title": "VehicleCreate"
+      },
+      "VehicleLocationResponse": {
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Vehicle Id"
+          },
+          "plate_number": {
+            "type": "string",
+            "title": "Plate Number"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "speed_kmh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speed Kmh"
+          },
+          "gps_valid": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gps Valid",
+            "description": "Validitas pesan yang mendasari posisi terakhir, bukan pesan terbaru."
+          },
+          "trip_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Id"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "gps_status": {
+            "type": "string",
+            "enum": [
+              "valid",
+              "invalid",
+              "no_data"
+            ],
+            "title": "Gps Status",
+            "description": "Validitas pesan GPS terakhir berdasarkan waktu penerimaan."
+          },
+          "data_age_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Age Seconds"
+          },
+          "location_status": {
+            "type": "string",
+            "enum": [
+              "fresh",
+              "stale",
+              "no_update",
+              "no_location",
+              "invalid_timestamp"
+            ],
+            "title": "Location Status",
+            "description": "Usia observed_at: fresh ≤30s, stale >30–60s, no_update >60s."
+          }
+        },
+        "type": "object",
+        "required": [
+          "vehicle_id",
+          "plate_number",
+          "latitude",
+          "longitude",
+          "observed_at",
+          "received_at",
+          "speed_kmh",
+          "gps_valid",
+          "trip_id",
+          "last_seen_at",
+          "gps_status",
+          "data_age_seconds",
+          "location_status"
+        ],
+        "title": "VehicleLocationResponse"
+      },
+      "VehicleResponse": {
+        "properties": {
+          "vehicle_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Vehicle Id"
+          },
+          "plate_number": {
+            "type": "string",
+            "title": "Plate Number"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "operator_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operator Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "vehicle_id",
+          "plate_number",
+          "display_name",
+          "is_active",
+          "operator_id"
+        ],
+        "title": "VehicleResponse"
       },
       "VehicleUpdate": {
         "properties": {
@@ -1457,6 +3933,7 @@
             "title": "Operator Id"
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "VehicleUpdate"
       }
@@ -1467,5 +3944,35 @@
         "scheme": "bearer"
       }
     }
-  }
+  },
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Kesehatan proses API dan koneksi PostgreSQL/PostGIS."
+    },
+    {
+      "name": "Authentication",
+      "description": "Login JWT 30 menit dan profil admin/operator."
+    },
+    {
+      "name": "Vehicles",
+      "description": "Armada, penugasan, dan posisi valid terakhir."
+    },
+    {
+      "name": "Devices",
+      "description": "Metadata perangkat; kredensial MQTT tidak dikembalikan."
+    },
+    {
+      "name": "Route Targets",
+      "description": "Konfigurasi dua target untuk trip berikutnya."
+    },
+    {
+      "name": "Trips",
+      "description": "Siklus perjalanan, snapshot target, jarak, dan riwayat GPS internal."
+    },
+    {
+      "name": "Passenger",
+      "description": "Ringkasan aktif melalui kode publik, tanpa ID internal."
+    }
+  ]
 }

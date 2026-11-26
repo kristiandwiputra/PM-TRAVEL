@@ -5,11 +5,16 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 from database import engine
 from trip_core import trip_view
+from api_schemas import ErrorResponse, PassengerTripResponse
 
 router = APIRouter(prefix='/api/public', tags=['Passenger'])
 
 
-@router.get('/trips/{code}')
+@router.get('/trips/{code}', response_model=PassengerTripResponse,
+            summary='Ringkasan perjalanan aktif untuk penumpang',
+            description='Tanpa login; memerlukan kode publik aktif. Tidak mengembalikan ID internal atau riwayat GPS.',
+            responses={404: {'model': ErrorResponse, 'description': 'Kode salah, dicabut, atau perjalanan tidak aktif.'},
+                       503: {'model': ErrorResponse, 'description': 'Koneksi layanan data sementara tidak tersedia.'}})
 def passenger_trip(code: str):
     if not re.fullmatch(r'[A-Za-z0-9_-]{25,80}', code):
         raise HTTPException(404, 'Kode perjalanan tidak berlaku')

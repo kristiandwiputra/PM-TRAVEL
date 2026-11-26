@@ -1,17 +1,18 @@
 """Vehicle management with operator ownership (PM_10)."""
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, StrictBool, field_validator
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from auth import require_roles
 from database import engine
 from location_service import get_latest_location
+from api_schemas import PROTECTED_RESPONSES, RequestModel, VehicleLocationResponse, VehicleResponse
 
-router = APIRouter(prefix='/api/vehicles', tags=['Vehicles'])
+router = APIRouter(prefix='/api/vehicles', tags=['Vehicles'], responses=PROTECTED_RESPONSES)
 
 
-class VehicleCreate(BaseModel):
+class VehicleCreate(RequestModel):
     plate_number: str = Field(min_length=1,max_length=30)
     display_name: str | None = Field(default=None,max_length=120)
     operator_id: UUID | None = None
@@ -24,9 +25,9 @@ class VehicleCreate(BaseModel):
         return value
 
 
-class VehicleUpdate(BaseModel):
+class VehicleUpdate(RequestModel):
     display_name: str | None = Field(default=None,max_length=120)
-    is_active: bool | None = None
+    is_active: StrictBool | None = None
     operator_id: UUID | None = None
 
 
@@ -43,8 +44,8 @@ def vehicle_access(conn, vehicle_id, user):
     return dict(row)
 
 
-@router.get('/')
-def list_vehicles(limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0),
+@router.get('/', response_model=list[VehicleResponse], summary='Daftar kendaraan sesuai kewenangan')
+def list_vehicles(limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0,le=100000),
                   user=Depends(require_roles('operator','admin'))):
     with engine.connect() as conn:
         rows=conn.execute(text('''
@@ -58,7 +59,8 @@ def list_vehicles(limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0),
     return [dict(r) for r in rows]
 
 
-@router.get('/{vehicle_id}/location/latest')
+@router.get('/{vehicle_id}/location/latest', response_model=VehicleLocationResponse,
+            summary='Posisi valid terakhir dan status pesan GPS terbaru')
 def latest_vehicle_location(vehicle_id:UUID,
                   user=Depends(require_roles('operator','admin'))):
     with engine.connect() as conn:
@@ -70,7 +72,7 @@ def latest_vehicle_location(vehicle_id:UUID,
     return result
 
 
-@router.get('/{vehicle_id}')
+@router.get('/{vehicle_id}', response_model=VehicleResponse, summary='Detail kendaraan')
 def vehicle_detail(vehicle_id:UUID,user=Depends(require_roles('operator','admin'))):
     with engine.connect() as conn:
         return vehicle_access(conn,vehicle_id,user)
@@ -85,7 +87,7 @@ def valid_operator(conn, operator_id):
         raise HTTPException(422,'operator_id harus pengguna dengan role operator')
 
 
-@router.post('/',status_code=201)
+@router.post('/',status_code=201, response_model=VehicleResponse, summary='Daftarkan kendaraan (admin)')
 def create_vehicle(payload:VehicleCreate,user=Depends(require_roles('admin'))):
     try:
         with engine.begin() as conn:
@@ -102,7 +104,7 @@ def create_vehicle(payload:VehicleCreate,user=Depends(require_roles('admin'))):
         raise HTTPException(409,'Nomor polisi sudah terdaftar') from exc
 
 
-@router.patch('/{vehicle_id}')
+@router.patch('/{vehicle_id}', response_model=VehicleResponse, summary='Perbarui nama, status, atau penugasan kendaraan')
 def update_vehicle(vehicle_id:UUID,payload:VehicleUpdate,
                    user=Depends(require_roles('operator','admin'))):
     changes=payload.model_dump(exclude_unset=True)

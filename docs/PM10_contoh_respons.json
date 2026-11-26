@@ -22,7 +22,6 @@
     },
     "targets": [
       {
-        "target_id": 1,
         "sequence_no": 1,
         "name": "Hajimena",
         "latitude": -5.3619361,
@@ -37,7 +36,6 @@
         }
       },
       {
-        "target_id": 2,
         "sequence_no": 2,
         "name": "Kotabumi",
         "latitude": -4.8351362,

@@ -13,9 +13,11 @@ from pwdlib import PasswordHash
 from sqlalchemy import text
 
 from database import engine, ENV_FILE
+from api_schemas import PROTECTED_RESPONSES, RequestModel, UserProfile
 
 
-router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+router = APIRouter(prefix="/api/auth", tags=["Authentication"],
+                   responses={code: PROTECTED_RESPONSES[code] for code in (401, 403, 503)})
 bearer = HTTPBearer(auto_error=False)
 hasher = PasswordHash.recommended()
 
@@ -27,7 +29,7 @@ ALLOWED_ROLES = {"operator", "admin"}
 DUMMY_HASH = hasher.hash("dummy-password-for-timing")
 
 
-class LoginRequest(BaseModel):
+class LoginRequest(RequestModel):
     email: str = Field(min_length=3, max_length=255)
     password: str = Field(min_length=1)
 
@@ -58,7 +60,8 @@ def unauthorized():
     )
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=TokenResponse, summary="Masuk sebagai admin atau operator",
+             description="JWT berlaku 30 menit. Kirim email dan password sebagai JSON.")
 def login(payload: LoginRequest):
     with engine.connect() as conn:
         user = conn.execute(
@@ -143,6 +146,6 @@ def require_roles(*allowed_roles):
     return check_access
 
 
-@router.get("/me")
+@router.get("/me", response_model=UserProfile, summary="Profil akun yang sedang masuk")
 def my_profile(user=Depends(get_current_user)):
     return user

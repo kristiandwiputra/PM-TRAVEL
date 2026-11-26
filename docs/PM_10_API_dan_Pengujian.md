@@ -1,6 +1,7 @@
 # PM_10 — Kontrak API, pengujian, dan catatan implementasi
 
-**Acuan:** Issue #11, PM_02, PM_03, PM_08. Bukti pengujian **belum dilakukan** saat paket kode dibuat.
+**Acuan:** [Issue #11 — PM_10](https://github.com/kristiandwiputra/PM-TRAVEL/issues/11), PM_02, PM_03, PM_08.
+Paket awal belum menyertakan bukti uji. Hasil regresi lokal terbaru pada **26 November 2026** dicatat di bagian 7.
 
 ## 1. Peran dan lingkup
 - `admin`: mengelola semua kendaraan, perangkat, rute/target dan trip, menetapkan `operator_id` kendaraan.
@@ -47,6 +48,9 @@
 - Kode akses aktif hanya selama `active`; route baru tidak mengubah snapshot `targets` milik trip lama.
 
 ## 4. Pengujian akhir yang wajib dibuktikan
+
+Checklist ini mencakup verifikasi integrasi akhir. Hasil regresi dengan fixture lokal
+di bagian 7 tidak otomatis menyelesaikan pengujian perangkat atau produksi.
 - [ ] Migrasi berjalan tanpa benturan serta dua target tersedia; `alembic current` menunjukkan `d6c9a2b4f701`.
 - [ ] Health, DB health, OpenAPI terbuat dan Swagger menampilkan router.
 - [ ] Login benar 200, password salah 401, token tidak ada 401, token rusak/kedaluwarsa 401.
@@ -71,3 +75,70 @@ CSV **belum diterapkan**. Ini `Should`, bukan `Must`; dicatat secara transparan.
 - Gunakan HTTPS dan JWT secret panjang di berkas env lokal, tidak di Git.
 - MQTT broker publik plaintext masih hanya untuk pengujian terkendali; belum memenuhi NFR keamanan produksi.
 - Hak akses data dalam prototipe mengikuti `operator_id` kendaraan dan trip; perlu audit untuk penggunaan multiarmada nyata.
+
+## 7. Penguatan PM_10 dan hasil regresi — 26 November 2026
+
+Perubahan mengikuti kontrak lokasi/riwayat, pemisahan akses penumpang/operator,
+validasi request, dan dokumentasi respons dalam issue #11.
+
+### Perbaikan yang dibuktikan
+
+1. **Riwayat tetap utuh setelah pemindahan perangkat.** Pembacaan posisi, jarak,
+   dan GPS perjalanan mengikuti `gps_positions.trip_id`, bukan pengaitan kendaraan
+   perangkat saat ini. Pemeriksaan pemilik trip tetap berlaku.
+2. **Ringkasan publik tanpa ID internal.** `target_id` dihapus dari target publik;
+   `sequence_no` menjadi pembeda target. Model respons publik terpisah dari model operator.
+3. **Validitas pesan dan usia posisi terpisah.** Endpoint posisi kendaraan menambahkan
+   `gps_status` dari pesan terakhir. Pesan GPS invalid tidak mengubah posisi valid
+   terakhir menjadi lokasi invalid, dan penerimaan baru tidak meremajakan `observed_at`.
+4. **Gangguan koneksi terkontrol.** Kegagalan koneksi dan timeout pool menghasilkan
+   JSON 503 dengan `Retry-After: 3`. Respons/log handler tidak memuat SQL atau parameter.
+5. **Kontrak eksplisit.** Seluruh 26 operasi memiliki skema respons sukses; request
+   menolak field tidak dikenal, boolean status harus berupa boolean JSON, dan batas
+   pagination serta enum status tercantum di Swagger/OpenAPI.
+
+### Pelaksanaan lokal
+
+- Python 3.13, FastAPI 0.162.0, Pydantic 2.14.3, SQLAlchemy 2.1.8, PostgreSQL/PostGIS lokal.
+- Revision database: `d6c9a2b4f701`; dua target rute tersedia.
+- Perintah dari `backend/`:
+
+```powershell
+$pmPython = Join-Path $env:LOCALAPPDATA 'PM-TRAVEL\backend-venv\Scripts\python.exe'
+& $pmPython -m unittest discover -s tests -p 'test_pm10_*.py' -v
+```
+
+Hasil: **16 test lulus**. Sebelum perbaikan, suite awal berisi 8 test menghasilkan
+4 failure dan 1 error pada kasus riwayat pemindahan perangkat, ID internal publik,
+status GPS, field request asing, dan kegagalan koneksi database.
+
+| Kelompok pemeriksaan | Hasil lokal |
+|---|---|
+| Login benar/salah, profil, token tidak ada/rusak/kedaluwarsa, sub UUID invalid | Lulus |
+| Penolakan kendaraan/perangkat/trip/riwayat milik operator lain dan operasi admin | Lulus |
+| Riwayat, posisi dan jarak tetap sama setelah perangkat dipindahkan | Lulus |
+| Snapshot dua target tidak berubah setelah konfigurasi diperbarui | Lulus |
+| Satu trip aktif per kendaraan dan larangan pemindahan/status saat aktif | Lulus untuk permintaan berurutan |
+| Hajimena tetap aktif; complete sebelum Hajimena ditolak | Lulus |
+| Kode salah ditolak; kode active dapat dibaca; completed/canceled dicabut | Lulus |
+| Publik tanpa ID internal, received_at/last_seen atau riwayat GPS | Lulus |
+| Posisi kosong, pesan terlambat, dan GPS invalid setelah posisi valid | Lulus |
+| Batas tepat 30/60 detik dan waktu GPS mendatang/tanpa zona | Lulus pada clock uji deterministik |
+| Batas pagination, field request tidak dikenal, dan ETA unavailable | Lulus |
+| Gangguan koneksi/pool: JSON 503 dan respons/log tanpa parameter | Lulus dengan injeksi kegagalan |
+| Semua operasi memiliki skema; enum status dan batas GPS tercantum | Lulus |
+
+Fixture `QA-PM10-*` memakai akun sementara dalam transaksi yang di-rollback serta
+savepoint per mutasi API. Tidak memakai password admin asli. Pemeriksaan setelah
+suite menunjukkan **0 akun fixture tersimpan**; sequence database dapat bertambah.
+
+`docs/PM10_openapi.json` dihasilkan ulang dari aplikasi. Contoh respons publik
+disesuaikan dengan kontrak tanpa ID target internal; contoh lain tetap memakai
+data QA terdahulu dan bukan rekaman perjalanan fisik baru.
+
+### Batas bukti
+
+Regresi ini tidak menjalankan smoke test lama yang menyimpan fixture permanen,
+pengujian permintaan paralel/beban p95, MQTT pada alat fisik, retensi/restore,
+TLS/VPS, atau integrasi model ETA. Kebutuhan tersebut tetap mengikuti kartu
+PM_08/PM_09, PM_15, PM_16, dan PM_17 masing-masing.

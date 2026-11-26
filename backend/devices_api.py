@@ -1,16 +1,17 @@
 """Device metadata and status; MQTT password/secret never returned."""
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, StrictBool, field_validator
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from auth import require_roles
 from database import engine
+from api_schemas import DeviceDetailResponse, DeviceResponse, PROTECTED_RESPONSES, RequestModel
 
-router=APIRouter(prefix='/api/devices',tags=['Devices'])
+router=APIRouter(prefix='/api/devices',tags=['Devices'],responses=PROTECTED_RESPONSES)
 
 
-class DeviceCreate(BaseModel):
+class DeviceCreate(RequestModel):
     device_id:str=Field(min_length=1,max_length=64,pattern=r'^[A-Za-z0-9_-]+$')
     vehicle_id:UUID
     mqtt_username:str=Field(min_length=1,max_length=120)
@@ -23,16 +24,16 @@ class DeviceCreate(BaseModel):
         return v
 
 
-class DeviceStatusUpdate(BaseModel):
-    is_active:bool
+class DeviceStatusUpdate(RequestModel):
+    is_active:StrictBool
 
 
-class DeviceReassign(BaseModel):
+class DeviceReassign(RequestModel):
     vehicle_id:UUID
 
 
-@router.get('/')
-def list_devices(limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0),
+@router.get('/',response_model=list[DeviceDetailResponse],summary='Daftar perangkat tanpa kredensial MQTT')
+def list_devices(limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0,le=100000),
                  user=Depends(require_roles('operator','admin'))):
     with engine.connect() as conn:
         rows=conn.execute(text('''
@@ -45,7 +46,7 @@ def list_devices(limit:int=Query(50,ge=1,le=100),offset:int=Query(0,ge=0),
     return [dict(r) for r in rows]
 
 
-@router.get('/{device_id}')
+@router.get('/{device_id}',response_model=DeviceDetailResponse,summary='Detail perangkat sesuai kewenangan')
 def device_detail(device_id:str,user=Depends(require_roles('operator','admin'))):
     with engine.connect() as conn:
         row=conn.execute(text('''
@@ -60,7 +61,7 @@ def device_detail(device_id:str,user=Depends(require_roles('operator','admin')))
     return dict(row)
 
 
-@router.post('/',status_code=201)
+@router.post('/',status_code=201,response_model=DeviceResponse,summary='Daftarkan perangkat (admin)')
 def create_device(payload:DeviceCreate,user=Depends(require_roles('admin'))):
     try:
         with engine.begin() as conn:
@@ -80,7 +81,7 @@ def create_device(payload:DeviceCreate,user=Depends(require_roles('admin'))):
         raise HTTPException(409,'Device ID / MQTT username sudah digunakan') from exc
 
 
-@router.patch('/{device_id}/status')
+@router.patch('/{device_id}/status',response_model=DeviceResponse,summary='Aktifkan atau nonaktifkan perangkat (admin)')
 def update_device_status(device_id:str,payload:DeviceStatusUpdate,
                          user=Depends(require_roles('admin'))):
     with engine.begin() as conn:
@@ -92,7 +93,8 @@ def update_device_status(device_id:str,payload:DeviceStatusUpdate,
     return dict(row)
 
 
-@router.patch('/{device_id}/vehicle')
+@router.patch('/{device_id}/vehicle',response_model=DeviceResponse,
+              summary='Pindahkan perangkat ketika kedua kendaraan tidak memiliki trip aktif')
 def reassign_device(device_id:str,payload:DeviceReassign,
                     user=Depends(require_roles('operator','admin'))):
     with engine.begin() as conn:

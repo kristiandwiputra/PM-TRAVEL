@@ -1,19 +1,21 @@
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator
 from sqlalchemy import text
 
 from auth import require_roles
 from database import engine
+from api_schemas import PROTECTED_RESPONSES, RequestModel, RouteTargetResponse
 
 
 router = APIRouter(
     prefix="/api/route-targets",
     tags=["Route Targets"],
+    responses=PROTECTED_RESPONSES,
 )
 
 
-class RouteTargetUpdate(BaseModel):
+class RouteTargetUpdate(RequestModel):
     name: str = Field(min_length=1, max_length=120)
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
@@ -33,7 +35,7 @@ class RouteTargetUpdate(BaseModel):
 # 1. DAFTAR TARGET RUTE
 # =====================================
 
-@router.get("/")
+@router.get("/", response_model=list[RouteTargetResponse], summary="Daftar dua target koridor")
 def list_route_targets(
     user=Depends(require_roles("operator", "admin"))
 ):
@@ -58,7 +60,7 @@ def list_route_targets(
 # 2. DETAIL TARGET RUTE
 # =====================================
 
-@router.get("/{sequence_no}")
+@router.get("/{sequence_no}", response_model=RouteTargetResponse, summary="Detail target koridor")
 def route_target_detail(
     sequence_no: int,
     user=Depends(require_roles("operator", "admin"))
@@ -92,7 +94,8 @@ def route_target_detail(
 # KHUSUS ADMIN
 # =====================================
 
-@router.put("/{sequence_no}")
+@router.put("/{sequence_no}", response_model=RouteTargetResponse,
+            summary="Perbarui target untuk trip berikutnya (admin)")
 def update_route_target(
     sequence_no: int,
     payload: RouteTargetUpdate,

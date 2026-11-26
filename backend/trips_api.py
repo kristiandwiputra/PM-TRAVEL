@@ -5,17 +5,21 @@ from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from auth import require_roles
 from database import engine
 from trip_core import iso, owned_trip, trip_view
+from api_schemas import (
+    GPSHistoryResponse, OperatorTripResponse, PROTECTED_RESPONSES, RequestModel,
+    TripArrivalResponse, TripCreatedResponse, TripEndedResponse,
+    TripStartedResponse, TripStatus, TripSummary,
+)
 
-router = APIRouter(prefix='/api/trips', tags=['Trips'])
+router = APIRouter(prefix='/api/trips', tags=['Trips'], responses=PROTECTED_RESPONSES)
 
 
-class TripCreate(BaseModel):
+class TripCreate(RequestModel):
     vehicle_id: UUID
 
 
@@ -33,7 +37,8 @@ def require_vehicle(conn, vehicle_id, user, for_update=False):
     return row
 
 
-@router.post('/', status_code=201)
+@router.post('/', status_code=201, response_model=TripCreatedResponse,
+             summary='Buat trip planned dan salin kedua target')
 def create_trip(payload: TripCreate, user=Depends(require_roles('operator', 'admin'))):
     trip_id = 'TRIP-' + datetime.now(timezone.utc).strftime('%Y%m%d') + '-' + uuid4().hex[:12].upper()
     with engine.begin() as conn:
@@ -53,13 +58,11 @@ def create_trip(payload: TripCreate, user=Depends(require_roles('operator', 'adm
             'message': 'Salinan target disimpan untuk perjalanan ini'}
 
 
-@router.get('/')
-def list_trips(status: str | None = Query(default=None),
+@router.get('/', response_model=list[TripSummary], summary='Riwayat perjalanan sesuai kewenangan')
+def list_trips(status: TripStatus | None = Query(default=None),
                limit: int = Query(default=20, ge=1, le=100),
                offset: int = Query(default=0, ge=0, le=100000),
                user=Depends(require_roles('operator','admin'))):
-    if status and status not in ('planned', 'active', 'completed', 'canceled'):
-        raise HTTPException(422, 'Status tidak dikenal')
     # Avoid untyped NULL parameter in PostgreSQL (:status IS NULL).
     status_filter = ' AND t.status = :status' if status else ''
     params = {'is_admin': user['role']=='admin', 'user_id': user['id'],
@@ -83,14 +86,16 @@ def list_trips(status: str | None = Query(default=None),
              'arrived_hajimena_at':iso(r['arrived_hajimena_at'])} for r in rows]
 
 
-@router.get('/{trip_id}')
+@router.get('/{trip_id}', response_model=OperatorTripResponse,
+            summary='Detail perjalanan, posisi, jarak, dan target')
 def get_trip(trip_id: str, user=Depends(require_roles('operator','admin'))):
     with engine.connect() as conn:
         trip = owned_trip(conn, trip_id, user)
         return trip_view(conn, trip, include_internal=True)
 
 
-@router.post('/{trip_id}/start')
+@router.post('/{trip_id}/start', response_model=TripStartedResponse,
+             summary='Mulai perjalanan dan terbitkan kode publik sekali')
 def start_trip(trip_id: str, user=Depends(require_roles('operator','admin'))):
     public_code = secrets.token_urlsafe(24)  # 192 bits; returned only once.
     digest = hashlib.sha256(public_code.encode('utf-8')).hexdigest()
@@ -116,7 +121,8 @@ def start_trip(trip_id: str, user=Depends(require_roles('operator','admin'))):
             'warning':'Simpan kode ini; tidak bisa dibaca ulang. Kode nonaktif setelah trip selesai.'}
 
 
-@router.post('/{trip_id}/arrive-hajimena')
+@router.post('/{trip_id}/arrive-hajimena', response_model=TripArrivalResponse,
+             summary='Catat tiba Hajimena; perjalanan tetap aktif')
 def arrive_hajimena(trip_id: str, user=Depends(require_roles('operator','admin'))):
     with engine.begin() as conn:
         trip = owned_trip(conn, trip_id, user, for_update=True)
@@ -131,7 +137,8 @@ def arrive_hajimena(trip_id: str, user=Depends(require_roles('operator','admin')
             'message':'Trip tetap aktif menuju Kotabumi'}
 
 
-@router.post('/{trip_id}/complete')
+@router.post('/{trip_id}/complete', response_model=TripEndedResponse,
+             summary='Selesaikan di Kotabumi setelah Hajimena dan cabut kode publik')
 def complete_trip(trip_id: str, user=Depends(require_roles('operator','admin'))):
     with engine.begin() as conn:
         trip = owned_trip(conn, trip_id, user, for_update=True)
@@ -145,7 +152,8 @@ def complete_trip(trip_id: str, user=Depends(require_roles('operator','admin')))
     return {'trip_id':trip_id,'status':'completed','ended_at':iso(ended)}
 
 
-@router.post('/{trip_id}/cancel')
+@router.post('/{trip_id}/cancel', response_model=TripEndedResponse,
+             summary='Batalkan perjalanan planned/active dan cabut kode publik')
 def cancel_trip(trip_id: str, user=Depends(require_roles('operator','admin'))):
     with engine.begin() as conn:
         trip = owned_trip(conn, trip_id, user, for_update=True)
@@ -157,7 +165,8 @@ def cancel_trip(trip_id: str, user=Depends(require_roles('operator','admin'))):
     return {'trip_id':trip_id,'status':'canceled','ended_at':iso(ended)}
 
 
-@router.get('/{trip_id}/positions')
+@router.get('/{trip_id}/positions', response_model=list[GPSHistoryResponse],
+            summary='Riwayat GPS internal, maksimal 200 baris per permintaan')
 def trip_positions(trip_id: str, limit: int=Query(100, ge=1, le=200),
                    offset:int=Query(0,ge=0,le=100000),
                    user=Depends(require_roles('operator','admin'))):
@@ -166,8 +175,7 @@ def trip_positions(trip_id: str, limit: int=Query(100, ge=1, le=200),
         rows = conn.execute(text('''
             SELECT p.id, p.observed_at, p.received_at, p.latitude,
                    p.longitude, p.speed_kmh, p.gps_valid, p.satellites, p.hdop
-            FROM gps_positions p JOIN devices d ON d.device_id=p.device_id
-            JOIN trips t ON t.trip_id=p.trip_id AND d.vehicle_id=t.vehicle_id
+            FROM gps_positions p
             WHERE p.trip_id=:trip_id
             ORDER BY p.received_at DESC,p.id DESC
             LIMIT :limit OFFSET :offset'''),
