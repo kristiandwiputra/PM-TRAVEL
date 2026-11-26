@@ -2,8 +2,8 @@
 import assert from 'node:assert/strict'
 import {
   arriveHajimena, cancelTrip, completeTrip, createTrip,
-  getProfile, getPublicTrip, getTripDetail, getTripPositions,
-  getTrips, loadDashboard, login, startTrip,
+  getProfile, getPublicTrip, getTrip, getTripPositions,
+  listTrips, loadDashboard, login, startTrip,
 } from './src/api.js'
 
 const fakeJSON = (value, status = 200) => new Response(JSON.stringify(value), {
@@ -105,7 +105,7 @@ assert.equal(data.trips[0].status, 'active')
 assert.equal(data.targets[0].name, 'Hajimena')
 
 // Uji fungsi trip operator
-const trips = await getTrips(token)
+const trips = await listTrips(token)
 assert.equal(trips.length, 2)
 const created = await createTrip(token, 'PMT-001')
 assert.equal(created.trip_id, 'TRIP-NEW')
@@ -117,7 +117,7 @@ const completed = await completeTrip(token, 'TRIP-1')
 assert.equal(completed.status, 'completed')
 const canceled = await cancelTrip(token, 'TRIP-PLANNED')
 assert.equal(canceled.status, 'canceled')
-const detail = await getTripDetail(token, 'TRIP-1')
+const detail = await getTrip(token, 'TRIP-1')
 assert.equal(detail.trip_id, 'TRIP-1')
 assert.equal(detail.targets.length, 2)
 const positions = await getTripPositions(token, 'TRIP-1')

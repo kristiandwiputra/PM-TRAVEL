@@ -138,9 +138,9 @@ function normalizeLocation(raw, vehicle) {
     ?? outer.observed_at ?? outer.last_observed_at ?? null
   const receivedAt = location.received_at ?? location.last_seen
     ?? outer.received_at ?? outer.last_seen ?? null
-  const ageSeconds = numeric(location.age_seconds ?? location.location_age_seconds
-    ?? outer.data_age_seconds ?? outer.age_seconds ?? outer.location_age_seconds
-    ?? location.data_age_seconds)
+  const ageSeconds = numeric(location.data_age_seconds ?? outer.data_age_seconds
+    ?? location.age_seconds ?? location.location_age_seconds
+    ?? outer.age_seconds ?? outer.location_age_seconds)
   const backendStatus = location.location_status ?? outer.location_status
   let locationStatus = backendStatus ?? 'no_location'
 
