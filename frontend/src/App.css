@@ -642,16 +642,249 @@
 .login-story h1 { margin: 22px 0 20px; color: #f7f9ee; font-size: clamp(36px, 3.7vw, 59px); line-height: 1.13; letter-spacing: -2.7px; font-weight: 500; }
 .login-story h1 > span { color: #d8ee9b; }
 .login-story-content > p { max-width: 365px; margin: 0; color: #a9bdab; font-size: 12px; line-height: 1.85; }
-.route-illustration { position: relative; width: 100%; aspect-ratio: 540 / 280; margin: 27px 0 23px; overflow: hidden; border: 1px solid #ffffff13; border-radius: 13px; background: #1c4436; }
-.illustration-grid { position: absolute; inset: 0; opacity: .17; background-image: linear-gradient(#a6c6a51a 1px, transparent 1px), linear-gradient(90deg, #a6c6a51a 1px, transparent 1px); background-size: 34px 34px; transform: rotate(-12deg) scale(1.3); }
-.route-drawing { position: absolute; inset: 0; width: 100%; height: 100%; }
-.map-street { stroke: #6b8f6b; stroke-width: 16px; opacity: .11; }
-.route-drawing text { fill: #bfceac; font-family: inherit; font-size: 11px; }
-.illustration-vehicle { position: absolute; left: 49%; top: 33%; display: grid; place-items: center; width: 43px; height: 43px; border: 5px solid #234b39; border-radius: 12px; background: #d8ee9b; color: #23452d; box-shadow: 0 0 0 1px #8cb36248, 0 8px 20px #132e2b44; transform: rotate(-9deg); }
-.illustration-label { position: absolute; top: 16px; left: 16px; display: grid; gap: 5px; }
-.illustration-label > span { display: flex; align-items: center; gap: 7px; color: #cbdab5; font-size: 8px; letter-spacing: 1px; }
-.illustration-label small { color: #789875; font-size: 8px; }
-.map-compass { position: absolute; right: 16px; bottom: 14px; display: grid; justify-items: center; gap: 4px; color: #86a67b; font-size: 8px; }
+.hero-corridor-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d8ee9b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.hero-corridor-label .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #a3e635;
+}
+.travel-hero-panel {
+  position: relative;
+  width: 100%;
+  margin: 18px 0 20px;
+}
+.travel-hero-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.hero-route-tag .hero-route-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #cbdab5;
+}
+.hero-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #a3e635;
+  font-weight: 600;
+}
+.live-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #a3e635;
+  box-shadow: 0 0 0 3px rgba(163, 230, 53, 0.3);
+  animation: pulse-ring 2s infinite;
+}
+.travel-map-card {
+  background: #11271f;
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 16px 32px rgba(10, 28, 22, 0.45);
+}
+.travel-map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.travel-vehicle-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plate-badge {
+  padding: 2px 7px;
+  background: rgba(250, 204, 21, 0.18);
+  border: 1px solid rgba(250, 204, 21, 0.35);
+  border-radius: 5px;
+  color: #fde047;
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.vehicle-name {
+  font-size: 11px;
+  color: #d1fae5;
+  font-weight: 500;
+}
+.travel-status-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #6ee7b7;
+  font-weight: 600;
+}
+.travel-status-tag .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34d399;
+}
+.travel-road-viewport {
+  position: relative;
+  width: 100%;
+  height: 155px;
+  background: #091510;
+  border: 1px solid #052e21;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.travel-road-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.travel-vehicle-marker {
+  position: absolute;
+  top: 24%;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  transition: left 1.8s ease-in-out;
+  transform: translate(-50%, -50%);
+}
+.travel-headlights-beam {
+  position: absolute;
+  left: 62px;
+  top: 8px;
+  width: 105px;
+  height: 48px;
+  pointer-events: none;
+  background: radial-gradient(ellipse at left, rgba(254, 240, 138, 0.42) 0%, rgba(254, 240, 138, 0.12) 50%, transparent 80%);
+  transform: rotate(10deg);
+  filter: blur(3px);
+  animation: headlights 2.2s ease-in-out infinite;
+}
+.travel-hiace-van {
+  position: relative;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.7));
+}
+.travel-plate-tag {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.88);
+  border: 1px solid #10b981;
+  color: #a7f3d0;
+  font-size: 9px;
+  font-family: monospace;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.travel-gps-pulse {
+  position: absolute;
+  left: -6px;
+  top: 2px;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+.travel-gps-pulse .pulse-wave {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #34d399;
+  opacity: 0.6;
+  animation: ping-slow 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+.travel-gps-pulse .pulse-point {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: #10b981;
+}
+.travel-ticker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.travel-ticker-item {
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(16, 185, 129, 0.15);
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+.ticker-label {
+  display: block;
+  font-size: 9px;
+  color: #94a3b8;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+.ticker-val {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ticker-val--speed { color: #a7f3d0; }
+.ticker-val--target { color: #7dd3fc; }
+.ticker-val--eta { color: #fde047; }
+
+.passenger-code-samples {
+  margin-top: 14px;
+}
+.sample-label {
+  display: block;
+  font-size: 11px;
+  color: #78876c;
+  margin-bottom: 6px;
+}
+.sample-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sample-chip {
+  padding: 5px 9px;
+  border: 1px solid #dbe2d4;
+  border-radius: 6px;
+  background: #f4f7f1;
+  color: #3f5539;
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sample-chip:hover {
+  background: #e6f0e0;
+  color: #1f3d23;
+  border-color: #b7cca9;
+}
 .story-features { display: flex; flex-wrap: wrap; gap: 13px 18px; }
 .story-features > span { display: inline-flex; align-items: center; gap: 5px; color: #afc49d; font-size: 9px; }
 .story-features svg { color: #d8ee9b; width: 13px; height: 13px; }
@@ -695,6 +928,20 @@ fieldset:disabled .login-submit { opacity: .7; cursor: progress; transform: none
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes marker-pulse { from { opacity: .8; transform: scale(.8); } to { opacity: 0; transform: scale(1.5); } }
+@keyframes headlights {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 0.95; }
+}
+@keyframes ping-slow {
+  0% { transform: scale(0.9); opacity: 0.9; }
+  70% { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(0.95); opacity: 0; }
+}
 
 @media (min-width: 1600px) { .login-story { padding: 45px 65px 30px; } .login-story-content { max-width: 650px; } .login-card { max-width: 390px; } .login-card h2 { font-size: 38px; } .login-description, .input-wrap input, .login-submit { font-size: 13px; } }
 @media (max-width: 1200px) {

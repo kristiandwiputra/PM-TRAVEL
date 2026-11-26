@@ -1256,20 +1256,118 @@ function Brand({ light = false }) {
 }
 
 function RouteIllustration() {
+  const [speed, setSpeed] = useState(48)
+  const [progress, setProgress] = useState(36)
+  const [locationText, setLocationText] = useState('Dekat Natar / Hajimena')
+  const [etaText, setEtaText] = useState('~1 jam 35 menit')
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSpeed(Math.round(46 + Math.random() * 8))
+      setProgress((prev) => {
+        const next = prev + 0.8
+        const bounded = next > 82 ? 18 : next
+        if (bounded < 42) {
+          setLocationText('Dekat Natar / Hajimena')
+          setEtaText('~1 jam 35 menit')
+        } else if (bounded < 65) {
+          setLocationText('Lintas Tegineneng')
+          setEtaText('~55 menit')
+        } else {
+          setLocationText('Mendekati Kotabumi')
+          setEtaText('~15 menit')
+        }
+        return bounded
+      })
+    }, 2200)
+    return () => clearInterval(timer)
+  }, [])
+
   return (
-    <div className="route-illustration" role="img" aria-label="Ilustrasi koridor Tanjung Karang, Hajimena, Kotabumi">
-      <div className="illustration-grid" />
-      <svg className="route-drawing" viewBox="0 0 540 280" fill="none" aria-hidden="true">
-        <path className="map-street" d="M-20 90 150 140 245 65 400 100 560 30M0 250 180 175 330 235 550 170M105-20 160 110 100 290M365-20 310 125 390 300" />
-        <path d="M75 211C155 225 139 122 242 139S316 51 429 69" stroke="#d6f28d" strokeWidth="3" strokeDasharray="7 9" strokeLinecap="round" />
-        <circle cx="75" cy="211" r="16" fill="#d6f28d" fillOpacity=".13" /><circle cx="75" cy="211" r="6" fill="#d6f28d" stroke="#234d3e" strokeWidth="3" />
-        <circle cx="242" cy="139" r="15" fill="#d6f28d" fillOpacity=".13" /><circle cx="242" cy="139" r="6" fill="#d6f28d" stroke="#234d3e" strokeWidth="3" />
-        <circle cx="429" cy="69" r="19" fill="#d6f28d" fillOpacity=".13" /><circle cx="429" cy="69" r="7" fill="#d6f28d" stroke="#234d3e" strokeWidth="3" />
-        <text x="38" y="250">Tanjung Karang</text><text x="210" y="177">Hajimena</text><text x="399" y="109">Kotabumi</text>
-      </svg>
-      <div className="illustration-vehicle"><BusFront size={23} /></div>
-      <div className="illustration-label"><span><Route size={14} />KORIDOR LAMPUNG</span><small>Ilustrasi perjalanan</small></div>
-      <span className="map-compass" aria-hidden="true"><Navigation size={18} />N</span>
+    <div className="travel-hero-panel" role="region" aria-label="Pemantauan Perjalanan Travel">
+      <div className="travel-hero-topbar">
+        <div className="hero-route-tag">
+          <span className="hero-route-badge">Rute Lintas Tengah Lampung</span>
+        </div>
+        <div className="hero-live-badge">
+          <span className="live-pulse-dot" />
+          <span>Pelacakan Aktif</span>
+        </div>
+      </div>
+
+      <div className="travel-map-card">
+        <div className="travel-map-header">
+          <div className="travel-vehicle-badge">
+            <span className="plate-badge">BE 7001 AA</span>
+            <span className="vehicle-name">Toyota HiAce &bull; Travel Eksekutif</span>
+          </div>
+          <div className="travel-status-tag">
+            <span className="status-dot" />
+            <span>Terhubung</span>
+          </div>
+        </div>
+
+        <div className="travel-road-viewport">
+          <svg className="travel-road-svg" viewBox="0 0 500 170" fill="none" preserveAspectRatio="none">
+            <path d="M 30 110 C 130 130, 200 60, 310 90 S 420 50, 480 70" stroke="#1f3b30" strokeWidth="36" strokeLinecap="round" />
+            <path d="M 30 110 C 130 130, 200 60, 310 90 S 420 50, 480 70" stroke="#0e231b" strokeWidth="32" strokeLinecap="round" />
+            <path d="M 30 110 C 130 130, 200 60, 310 90 S 420 50, 480 70" stroke="#facc15" strokeWidth="2" strokeDasharray="8 10" strokeLinecap="round" opacity="0.65" />
+            <circle cx="45" cy="112" r="6" fill="#10b981" stroke="#064e3b" strokeWidth="2" />
+            <text x="25" y="140" fill="#cbd5e1" fontSize="9" fontWeight="600">Tj. Karang</text>
+            <circle cx="215" cy="67" r="5" fill="#38bdf8" stroke="#0369a1" strokeWidth="2" />
+            <text x="195" y="52" fill="#38bdf8" fontSize="9" fontWeight="600">Hajimena</text>
+            <circle cx="465" cy="70" r="7" fill="#f43f5e" stroke="#881337" strokeWidth="2" />
+            <text x="430" y="98" fill="#f43f5e" fontSize="9" fontWeight="600">Kotabumi</text>
+          </svg>
+
+          <div className="travel-vehicle-marker" style={{ left: `${progress}%` }}>
+            <div className="travel-headlights-beam" />
+            <div className="travel-hiace-van" title="BE 7001 AA (Travel HiAce)">
+              <svg width="78" height="38" viewBox="0 0 120 56" fill="none">
+                <ellipse cx="60" cy="51" rx="52" ry="4" fill="rgba(0,0,0,0.6)" />
+                <path d="M 8 36 L 10 22 C 12 16, 18 12, 26 12 L 86 12 C 92 12, 97 15, 102 21 L 114 31 C 117 34, 118 38, 118 42 L 118 45 L 8 45 Z" fill="#ffffff" stroke="#334155" strokeWidth="1.5" />
+                <path d="M 28 15 L 50 15 L 50 28 L 24 28 Z" fill="#0f172a" />
+                <path d="M 53 15 L 75 15 L 75 28 L 53 28 Z" fill="#0f172a" />
+                <path d="M 78 15 L 94 15 L 103 27 L 78 28 Z" fill="#0f172a" />
+                <path d="M 12 36 L 110 36 L 112 39 L 10 39 Z" fill="#059669" />
+                <path d="M 16 40 L 100 40 L 101 42 L 14 42 Z" fill="#10b981" />
+                <polygon points="112,30 118,34 115,38 109,34" fill="#fef08a" stroke="#ca8a04" strokeWidth="0.8" />
+                <rect x="7" y="24" width="3" height="12" rx="1.5" fill="#ef4444" />
+                <circle cx="28" cy="46" r="9" fill="#1e293b" />
+                <circle cx="28" cy="46" r="5" fill="#94a3b8" />
+                <circle cx="28" cy="46" r="2" fill="#0f172a" />
+                <circle cx="94" cy="46" r="9" fill="#1e293b" />
+                <circle cx="94" cy="46" r="5" fill="#94a3b8" />
+                <circle cx="94" cy="46" r="2" fill="#0f172a" />
+              </svg>
+              <div className="travel-plate-tag">BE 7001 AA</div>
+            </div>
+            <div className="travel-gps-pulse">
+              <span className="pulse-wave" />
+              <span className="pulse-point" />
+            </div>
+          </div>
+        </div>
+
+        <div className="travel-ticker-grid">
+          <div className="travel-ticker-item">
+            <span className="ticker-label">Kecepatan Mobil</span>
+            <strong className="ticker-val ticker-val--speed">{speed} km/jam</strong>
+          </div>
+          <div className="travel-ticker-item">
+            <span className="ticker-label">Lokasi Terkini</span>
+            <strong className="ticker-val">{locationText}</strong>
+          </div>
+          <div className="travel-ticker-item">
+            <span className="ticker-label">Tujuan Berikutnya</span>
+            <strong className="ticker-val ticker-val--target">Pos Hajimena (~4 km)</strong>
+          </div>
+          <div className="travel-ticker-item">
+            <span className="ticker-label">Estimasi Sampai Kotabumi</span>
+            <strong className="ticker-val ticker-val--eta">{etaText}</strong>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1493,14 +1591,32 @@ function LoginPage({ onLogin, busy, error, onTrackTrip }) {
       <section className="login-story" aria-labelledby="login-story-title">
         <Brand light />
         <div className="login-story-content">
-          <span className="story-tag"><i />TRAVEL MONITORING SYSTEM</span>
-          <h1 id="login-story-title">Setiap perjalanan,<br />dalam <span>pantauan.</span></h1>
-          <p>Lebih dekat dengan armada Anda. Pantau lokasi, ikuti perjalanan, dan kelola operasional dalam satu tempat.</p>
+          <div className="hero-corridor-label">
+            <span className="dot" />
+            <span>TRAYEK REGULER LAMPUNG</span>
+          </div>
+          <h1 id="login-story-title">
+            Pantau Lokasi Travel &<br />
+            <span>Waktu Sampai.</span>
+          </h1>
+          <p>
+            Ketahui posisi mobil travel terkini dan perkiraan waktu tiba di lokasi penjemputan Anda secara langsung.
+          </p>
+
           <RouteIllustration />
-          <div className="story-features"><span><Check size={15} />Lokasi kendaraan</span><span><Check size={15} />Status perjalanan</span><span><Check size={15} />Pembaruan otomatis</span></div>
+
+          <div className="story-features">
+            <span><Check size={15} /> Layanan Antar Kota</span>
+            <span><Check size={15} /> Jadwal Pagi, Siang & Sore</span>
+            <span><Check size={15} /> Pembaruan Otomatis</span>
+          </div>
         </div>
-        <div className="login-story-footer"><span>Terhubung di setiap perjalanan.</span><span>Lampung, Indonesia <ArrowUpRight size={13} /></span></div>
+        <div className="login-story-footer">
+          <span>Layanan Resmi PM-TRAVEL Lampung</span>
+          <span>Tanjung Karang &bull; Hajimena &bull; Kotabumi</span>
+        </div>
       </section>
+
       <section className="login-form-panel" aria-labelledby="login-title">
         <div className="mobile-login-brand"><Brand /></div>
         <div className="login-card">
@@ -1510,52 +1626,172 @@ function LoginPage({ onLogin, busy, error, onTrackTrip }) {
               className={`login-tab-button ${mode === 'operator' ? 'login-tab-button--active' : ''}`}
               onClick={() => setMode('operator')}
             >
-              <LockKeyhole size={14} /> Operator / Admin
+              <LockKeyhole size={14} /> Login Operator
             </button>
             <button
               type="button"
               className={`login-tab-button ${mode === 'passenger' ? 'login-tab-button--active' : ''}`}
               onClick={() => setMode('passenger')}
             >
-              <Route size={14} /> Lacak Penumpang
+              <Route size={14} /> Cek Tiket Penumpang
             </button>
           </div>
 
           <span className="login-welcome-icon"><LockKeyhole size={24} /></span>
-          <p className="eyebrow">{mode === 'operator' ? 'SELAMAT DATANG KEMBALI' : 'PELACAKAN PENUMPANG'}</p>
+          <p className="eyebrow">{mode === 'operator' ? 'PORTAL OPERASIONAL' : 'PELACAKAN TIKET'}</p>
           <h2 id="login-title">
-            {mode === 'operator' ? 'Masuk ke ruang operasional Anda.' : 'Lacak perjalanan tiket Anda.'}
+            {mode === 'operator' ? 'Masuk Akun Operator' : 'Lacak Mobil Travel Anda'}
           </h2>
           <p className="login-description">
             {mode === 'operator'
-              ? 'Gunakan akun admin atau operator untuk mulai memantau armada.'
-              : 'Masukkan kode perjalanan yang diberikan pihak travel tanpa perlu login.'}
+              ? 'Silakan masuk dengan akun resmi untuk mengatur perjalanan armada travel.'
+              : 'Ketikkan kode perjalanan dari tiket travel Anda untuk melihat posisi mobil dan perkiraan menit sampai.'}
           </p>
 
           <form onSubmit={submit} aria-busy={busy}>
             <fieldset disabled={busy}>
               {mode === 'operator' ? (
                 <>
-                  <div className="form-field"><label htmlFor="login-user">Alamat email</label><div className="input-wrap"><Mail size={18} /><input id="login-user" name="email" type="email" autoComplete="username" autoCapitalize="none" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nama@perusahaan.com" required aria-describedby={error ? 'login-error' : undefined} aria-invalid={error ? true : undefined} /></div></div>
-                  <div className="form-field"><label htmlFor="login-password">Kata sandi</label><div className="input-wrap"><LockKeyhole size={18} /><input id="login-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Masukkan kata sandi" required aria-describedby={error ? 'login-error' : undefined} aria-invalid={error ? true : undefined} /><button type="button" className="password-toggle" aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} aria-pressed={showPassword} aria-controls="login-password" onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></div>
-                  {error && <div id="login-error" className="login-error" role="alert"><AlertTriangle size={17} /><span>{error}</span></div>}
-                  <button type="submit" className="login-submit">{busy ? <><LoaderCircle size={18} className="spin" />Sedang masuk...</> : <>Masuk ke dashboard<ArrowRight size={18} /></>}</button>
+                  <div className="form-field">
+                    <label htmlFor="login-user">Email Operator</label>
+                    <div className="input-wrap">
+                      <Mail size={18} />
+                      <input
+                        id="login-user"
+                        name="email"
+                        type="email"
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        placeholder="operator@pmtravel.com"
+                        required
+                        aria-describedby={error ? 'login-error' : undefined}
+                        aria-invalid={error ? true : undefined}
+                      />
+                    </div>
+                  </div>
+                  <div className="form-field">
+                    <label htmlFor="login-password">Kata Sandi</label>
+                    <div className="input-wrap">
+                      <LockKeyhole size={18} />
+                      <input
+                        id="login-password"
+                        name="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        placeholder="Masukkan kata sandi"
+                        required
+                        aria-describedby={error ? 'login-error' : undefined}
+                        aria-invalid={error ? true : undefined}
+                      />
+                      <button
+                        type="button"
+                        className="password-toggle"
+                        aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                        aria-pressed={showPassword}
+                        aria-controls="login-password"
+                        onClick={() => setShowPassword((value) => !value)}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div id="login-error" className="login-error" role="alert">
+                      <AlertTriangle size={17} />
+                      <span>{error}</span>
+                    </div>
+                  )}
+
+                  <button type="submit" className="login-submit">
+                    {busy ? (
+                      <>
+                        <LoaderCircle size={18} className="spin" />
+                        Sedang masuk...
+                      </>
+                    ) : (
+                      <>
+                        Masuk ke Dashboard Travel
+                        <ArrowRight size={18} />
+                      </>
+                    )}
+                  </button>
                 </>
               ) : (
                 <>
-                  <div className="form-field"><label htmlFor="trip-code-input">Kode perjalanan unik</label><div className="input-wrap"><Route size={18} /><input id="trip-code-input" name="code" type="text" autoCapitalize="none" spellCheck={false} value={tripCode} onChange={(event) => setTripCode(event.target.value)} placeholder="Masukkan kode trip travel Anda..." required /></div></div>
-                  <button type="submit" className="login-submit">Lacak Perjalanan Sekarang <ArrowRight size={18} /></button>
+                  <div className="form-field">
+                    <label htmlFor="trip-code-input">Kode Tiket Perjalanan</label>
+                    <div className="input-wrap">
+                      <Route size={18} />
+                      <input
+                        id="trip-code-input"
+                        name="code"
+                        type="text"
+                        autoCapitalize="none"
+                        spellCheck={false}
+                        value={tripCode}
+                        onChange={(event) => setTripCode(event.target.value)}
+                        placeholder="Contoh: TRIP-KOTABUMI-01"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="passenger-code-samples">
+                    <span className="sample-label">Coba contoh kode tiket:</span>
+                    <div className="sample-chips">
+                      <button
+                        type="button"
+                        onClick={() => setTripCode('TRIP-KOTABUMI-01')}
+                        className="sample-chip"
+                      >
+                        TRIP-KOTABUMI-01 (Mobil Berjalan)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTripCode('TRIP-HAJIMENA-02')}
+                        className="sample-chip"
+                      >
+                        TRIP-HAJIMENA-02
+                      </button>
+                    </div>
+                  </div>
+
+                  <button type="submit" className="login-submit">
+                    Lacak Posisi Mobil Sekarang <ArrowRight size={18} />
+                  </button>
                 </>
               )}
             </fieldset>
           </form>
-          <div className="login-security"><ShieldCheck size={16} /><span>{mode === 'operator' ? 'Akses aman khusus admin dan operator' : 'Akses publik aman khusus perjalanan aktif'}</span></div>
+
+          <div className="login-security">
+            <ShieldCheck size={16} />
+            <span>
+              {mode === 'operator'
+                ? 'Akses resmi khusus petugas dan operator armada'
+                : 'Layanan publik pemantauan travel Lampung'}
+            </span>
+          </div>
+
           <div className="login-help">
-            <strong>{mode === 'operator' ? 'Belum memiliki akses?' : 'Cara mendapatkan kode?'}</strong>
-            <p>{mode === 'operator' ? 'Hubungi administrator untuk mendapatkan akun atau bantuan kata sandi.' : 'Kode perjalanan tertera pada struk pemesanan tiket atau dibagikan oleh operator travel Anda.'}</p>
+            <strong>{mode === 'operator' ? 'Bantuan Akun Operator?' : 'Di mana melihat kode tiket?'}</strong>
+            <p>
+              {mode === 'operator'
+                ? 'Hubungi administrator kantor bila Anda belum memiliki akun atau lupa kata sandi.'
+                : 'Kode perjalanan tertera pada struk pemesanan tiket atau dibagikan oleh admin travel Anda.'}
+            </p>
           </div>
         </div>
-        <footer className="login-form-footer">© {new Date().getFullYear()} PM-TRAVEL <span>Sistem Pemantauan Travel</span></footer>
+
+        <footer className="login-form-footer">
+          © {new Date().getFullYear()} PM-TRAVEL <span>Sistem Pemantauan Travel Lampung</span>
+        </footer>
       </section>
     </main>
   )
