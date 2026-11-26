@@ -217,3 +217,9 @@ export async function loadDashboard(token) {
     checkedAt: new Date().toISOString(),
   }
 }
+
+export async function getPublicTrip(code) {
+  const cleanCode = String(code).trim()
+  if (!cleanCode) throw new ApiError('Kode perjalanan tidak boleh kosong.', 400)
+  return request(`/public/trips/${encodeURIComponent(cleanCode)}`)
+}

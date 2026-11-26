@@ -9,7 +9,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react'
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { ApiError, getProfile, loadDashboard, login, REFRESH_INTERVAL_MS } from './api'
+import { ApiError, getProfile, getPublicTrip, loadDashboard, login, REFRESH_INTERVAL_MS } from './api'
 import 'leaflet/dist/leaflet.css'
 import './App.css'
 
@@ -637,13 +637,191 @@ function RouteIllustration() {
   )
 }
 
-function LoginPage({ onLogin, busy, error }) {
+function PassengerTrackPage({ code, onBack }) {
+  const [trip, setTrip] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [focusKey, setFocusKey] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    async function fetchTrip() {
+      try {
+        const result = await getPublicTrip(code)
+        if (active) {
+          setTrip(result)
+          setError('')
+        }
+      } catch (err) {
+        if (active) {
+          setError(err.message || 'Kode perjalanan tidak berlaku atau perjalanan telah selesai.')
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    fetchTrip()
+    const timer = setInterval(fetchTrip, REFRESH_INTERVAL_MS)
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
+  }, [code])
+
+  if (loading && !trip) {
+    return (
+      <div className="passenger-shell">
+        <header className="passenger-topbar">
+          <Brand />
+          <button type="button" className="outline-button" onClick={onBack}>
+            <LogOut size={15} /> Kembali
+          </button>
+        </header>
+        <main className="passenger-main">
+          <div className="empty-list" style={{ marginTop: '60px' }}>
+            <LoaderCircle size={36} className="spin" />
+            <strong>Menghubungkan ke perjalanan...</strong>
+            <p>Mencari koordinat dan status perjalanan aktif.</p>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (error && !trip) {
+    return (
+      <div className="passenger-shell">
+        <header className="passenger-topbar">
+          <Brand />
+          <button type="button" className="outline-button" onClick={onBack}>
+            <LogOut size={15} /> Masuk Akun
+          </button>
+        </header>
+        <main className="passenger-main">
+          <div className="passenger-error-card">
+            <span className="passenger-error-icon">
+              <AlertTriangle size={28} />
+            </span>
+            <h3>Perjalanan Tidak Tersedia</h3>
+            <p>{error}</p>
+            <button type="button" className="floating-card-action" onClick={onBack} style={{ marginTop: '10px' }}>
+              Coba Kode Lain
+            </button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  const vehiclePosition = trip?.position?.latitude !== null && trip?.position?.latitude !== undefined
+    && trip?.position?.longitude !== null && trip?.position?.longitude !== undefined
+    ? [trip.position.latitude, trip.position.longitude]
+    : null
+
+  const vehicleObj = {
+    id: 'passenger-active-trip',
+    plate: 'Armada Travel',
+    name: 'Kendaraan Perjalanan',
+    speed: trip?.position?.speed_kmh,
+    position: vehiclePosition,
+    locationStatus: trip?.position?.location_status ?? 'no_location',
+    observedAt: trip?.position?.observed_at,
+    receivedAt: trip?.position?.received_at,
+    ageSeconds: trip?.position?.data_age_seconds,
+  }
+
+  const targets = (trip?.targets ?? []).map((t) => ({
+    name: t.name,
+    position: [t.latitude, t.longitude],
+    sequence: t.sequence_no,
+    remainingMeters: t.remaining_straight_line_m,
+    eta: t.eta,
+  }))
+
+  return (
+    <div className="passenger-shell">
+      <header className="passenger-topbar">
+        <Brand />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span className="passenger-badge">
+            <ShieldCheck size={14} /> MODE PENUMPANG
+          </span>
+          <button type="button" className="outline-button" onClick={onBack}>
+            <LogOut size={15} /> Ganti Kode
+          </button>
+        </div>
+      </header>
+
+      <main className="passenger-main">
+        <div className="passenger-hero">
+          <h1>Pelacakan Perjalanan Langsung</h1>
+          <p>
+            Rute koridor Lampung &bull; Tanjung Karang ➔ Hajimena ➔ Kotabumi &bull; Data live dari alat IoT
+          </p>
+        </div>
+
+        <div className="corridor-bar">
+          <span><Route size={15} />STATUS PERJALANAN</span>
+          <div>
+            Status: <strong>{trip?.status === 'active' ? 'Sedang Berlangsung' : trip?.status}</strong>
+            &bull; Waktu Berangkat: {formatTime(trip?.started_at)}
+          </div>
+        </div>
+
+        <LiveMap
+          vehicles={vehiclePosition ? [vehicleObj] : []}
+          selectedVehicle={vehicleObj}
+          focusKey={focusKey}
+          targets={targets}
+          onCenter={() => setFocusKey((k) => k + 1)}
+        />
+
+        <div className="passenger-targets-grid">
+          {targets.map((target) => (
+            <div key={target.name} className="passenger-target-card">
+              <div className="passenger-target-header">
+                <strong>Target: {target.name}</strong>
+                <StatusPill tone={target.name === 'Hajimena' && trip?.arrived_hajimena_at ? 'mint' : 'amber'}>
+                  {target.name === 'Hajimena' && trip?.arrived_hajimena_at ? 'Sudah Tiba' : 'Menuju Titik'}
+                </StatusPill>
+              </div>
+              <div className="passenger-target-stats">
+                <div className="passenger-target-stat">
+                  <span>Sisa Jarak Garis Lurus</span>
+                  <strong>
+                    {target.remainingMeters !== null && target.remainingMeters !== undefined
+                      ? `${(target.remainingMeters / 1000).toFixed(1)} km`
+                      : '—'}
+                  </strong>
+                </div>
+                <div className="passenger-target-stat">
+                  <span>Estimasi Tiba (ETA)</span>
+                  <strong>Belum tersedia (PM_15)</strong>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function LoginPage({ onLogin, busy, error, onTrackTrip }) {
+  const [mode, setMode] = useState('operator')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [tripCode, setTripCode] = useState('')
+
   const submit = (event) => {
     event.preventDefault()
-    if (!busy && email.trim() && password) onLogin(email.trim(), password)
+    if (mode === 'operator') {
+      if (!busy && email.trim() && password) onLogin(email.trim(), password)
+    } else {
+      if (tripCode.trim() && onTrackTrip) onTrackTrip(tripCode.trim())
+    }
   }
 
   return (
@@ -662,20 +840,56 @@ function LoginPage({ onLogin, busy, error }) {
       <section className="login-form-panel" aria-labelledby="login-title">
         <div className="mobile-login-brand"><Brand /></div>
         <div className="login-card">
+          <div className="login-tabs" role="tablist">
+            <button
+              type="button"
+              className={`login-tab-button ${mode === 'operator' ? 'login-tab-button--active' : ''}`}
+              onClick={() => setMode('operator')}
+            >
+              <LockKeyhole size={14} /> Operator / Admin
+            </button>
+            <button
+              type="button"
+              className={`login-tab-button ${mode === 'passenger' ? 'login-tab-button--active' : ''}`}
+              onClick={() => setMode('passenger')}
+            >
+              <Route size={14} /> Lacak Penumpang
+            </button>
+          </div>
+
           <span className="login-welcome-icon"><LockKeyhole size={24} /></span>
-          <p className="eyebrow">SELAMAT DATANG KEMBALI</p>
-          <h2 id="login-title">Masuk ke ruang<br />operasional Anda.</h2>
-          <p className="login-description">Gunakan akun admin atau operator untuk mulai memantau armada.</p>
+          <p className="eyebrow">{mode === 'operator' ? 'SELAMAT DATANG KEMBALI' : 'PELACAKAN PENUMPANG'}</p>
+          <h2 id="login-title">
+            {mode === 'operator' ? 'Masuk ke ruang operasional Anda.' : 'Lacak perjalanan tiket Anda.'}
+          </h2>
+          <p className="login-description">
+            {mode === 'operator'
+              ? 'Gunakan akun admin atau operator untuk mulai memantau armada.'
+              : 'Masukkan kode perjalanan yang diberikan pihak travel tanpa perlu login.'}
+          </p>
+
           <form onSubmit={submit} aria-busy={busy}>
             <fieldset disabled={busy}>
-              <div className="form-field"><label htmlFor="login-user">Alamat email</label><div className="input-wrap"><Mail size={18} /><input id="login-user" name="email" type="email" autoComplete="username" autoCapitalize="none" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nama@perusahaan.com" required aria-describedby={error ? 'login-error' : undefined} aria-invalid={error ? true : undefined} /></div></div>
-              <div className="form-field"><label htmlFor="login-password">Kata sandi</label><div className="input-wrap"><LockKeyhole size={18} /><input id="login-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Masukkan kata sandi" required aria-describedby={error ? 'login-error' : undefined} aria-invalid={error ? true : undefined} /><button type="button" className="password-toggle" aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} aria-pressed={showPassword} aria-controls="login-password" onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></div>
-              {error && <div id="login-error" className="login-error" role="alert"><AlertTriangle size={17} /><span>{error}</span></div>}
-              <button type="submit" className="login-submit">{busy ? <><LoaderCircle size={18} className="spin" />Sedang masuk...</> : <>Masuk ke dashboard<ArrowRight size={18} /></>}</button>
+              {mode === 'operator' ? (
+                <>
+                  <div className="form-field"><label htmlFor="login-user">Alamat email</label><div className="input-wrap"><Mail size={18} /><input id="login-user" name="email" type="email" autoComplete="username" autoCapitalize="none" spellCheck={false} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nama@perusahaan.com" required aria-describedby={error ? 'login-error' : undefined} aria-invalid={error ? true : undefined} /></div></div>
+                  <div className="form-field"><label htmlFor="login-password">Kata sandi</label><div className="input-wrap"><LockKeyhole size={18} /><input id="login-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Masukkan kata sandi" required aria-describedby={error ? 'login-error' : undefined} aria-invalid={error ? true : undefined} /><button type="button" className="password-toggle" aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'} aria-pressed={showPassword} aria-controls="login-password" onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div></div>
+                  {error && <div id="login-error" className="login-error" role="alert"><AlertTriangle size={17} /><span>{error}</span></div>}
+                  <button type="submit" className="login-submit">{busy ? <><LoaderCircle size={18} className="spin" />Sedang masuk...</> : <>Masuk ke dashboard<ArrowRight size={18} /></>}</button>
+                </>
+              ) : (
+                <>
+                  <div className="form-field"><label htmlFor="trip-code-input">Kode perjalanan unik</label><div className="input-wrap"><Route size={18} /><input id="trip-code-input" name="code" type="text" autoCapitalize="none" spellCheck={false} value={tripCode} onChange={(event) => setTripCode(event.target.value)} placeholder="Masukkan kode trip travel Anda..." required /></div></div>
+                  <button type="submit" className="login-submit">Lacak Perjalanan Sekarang <ArrowRight size={18} /></button>
+                </>
+              )}
             </fieldset>
           </form>
-          <div className="login-security"><ShieldCheck size={16} /><span>Akses aman khusus admin dan operator</span></div>
-          <div className="login-help"><strong>Belum memiliki akses?</strong><p>Hubungi administrator untuk mendapatkan akun atau bantuan kata sandi.</p></div>
+          <div className="login-security"><ShieldCheck size={16} /><span>{mode === 'operator' ? 'Akses aman khusus admin dan operator' : 'Akses publik aman khusus perjalanan aktif'}</span></div>
+          <div className="login-help">
+            <strong>{mode === 'operator' ? 'Belum memiliki akses?' : 'Cara mendapatkan kode?'}</strong>
+            <p>{mode === 'operator' ? 'Hubungi administrator untuk mendapatkan akun atau bantuan kata sandi.' : 'Kode perjalanan tertera pada struk pemesanan tiket atau dibagikan oleh operator travel Anda.'}</p>
+          </div>
         </div>
         <footer className="login-form-footer">© {new Date().getFullYear()} PM-TRAVEL <span>Sistem Pemantauan Travel</span></footer>
       </section>
@@ -686,6 +900,10 @@ function LoginPage({ onLogin, busy, error }) {
 const emptyData = { vehicles: [], trips: [], targets: [], checkedAt: null, warning: '' }
 
 function App() {
+  const [passengerCode, setPassengerCode] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('trip') || params.get('code') || ''
+  })
   const [token, setToken] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loginBusy, setLoginBusy] = useState(false)
@@ -768,7 +986,31 @@ function App() {
 
   const navigate = (nextPage) => { setPage(nextPage); setMenuOpen(false) }
 
-  if (!token) return <LoginPage onLogin={handleLogin} busy={loginBusy} error={loginError} />
+  if (passengerCode) {
+    return (
+      <PassengerTrackPage
+        code={passengerCode}
+        onBack={() => {
+          setPassengerCode('')
+          window.history.replaceState({}, '', window.location.pathname)
+        }}
+      />
+    )
+  }
+
+  if (!token) {
+    return (
+      <LoginPage
+        onLogin={handleLogin}
+        busy={loginBusy}
+        error={loginError}
+        onTrackTrip={(code) => {
+          setPassengerCode(code)
+          window.history.replaceState({}, '', `?trip=${encodeURIComponent(code)}`)
+        }}
+      />
+    )
+  }
 
   return (
     <div className="app-shell">

@@ -382,6 +382,182 @@
     padding-bottom: 92px !important;
   }
 }
+
+/* =====================================
+ * TAHAP 4: PASSENGER TRACKING PAGE
+ * ===================================== */
+.login-tabs {
+  display: flex;
+  background: #f0f4ec;
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 22px;
+  gap: 4px;
+}
+
+.login-tab-button {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #5c6b58;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.login-tab-button--active {
+  background: #fff;
+  color: #173c30;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.passenger-shell {
+  min-height: 100vh;
+  background: #f5f7f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.passenger-topbar {
+  height: 72px;
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  border-bottom: 1px solid #e6ebe6;
+  position: sticky;
+  top: 0;
+  z-index: 1001;
+}
+
+.passenger-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #eef7e8;
+  border: 1px solid #d4e8c6;
+  border-radius: 9999px;
+  color: #3b6b37;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.passenger-main {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 26px 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.passenger-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.passenger-hero h1 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1d3625;
+  margin: 0;
+}
+
+.passenger-hero p {
+  color: #718170;
+  font-size: 12px;
+  margin: 0;
+}
+
+.passenger-targets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.passenger-target-card {
+  background: #fff;
+  border: 1px solid #e1e8db;
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 6px rgba(20, 40, 30, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.passenger-target-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.passenger-target-header strong {
+  font-size: 14px;
+  color: #213d28;
+}
+
+.passenger-target-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.passenger-target-stat {
+  background: #f7f9f6;
+  padding: 8px 10px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.passenger-target-stat span {
+  font-size: 9px;
+  color: #8b9987;
+}
+
+.passenger-target-stat strong {
+  color: #28422e;
+  font-size: 12px;
+}
+
+.passenger-error-card {
+  background: #fff;
+  border: 1px solid #f3d5c9;
+  border-radius: 14px;
+  padding: 32px 24px;
+  text-align: center;
+  max-width: 480px;
+  margin: 40px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.passenger-error-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #fdf1ec;
+  color: #c0492c;
+  display: grid;
+  place-items: center;
+}
 .travel-map { width: 100%; height: 100%; z-index: 0; background: #e8eddf; font-family: inherit; }
 .map-shell .leaflet-control-zoom { border: 1px solid #e0e6d9; border-radius: 8px; overflow: hidden; box-shadow: 0 3px 10px #284a3112; }
 .map-shell .leaflet-control-zoom a { color: #48603b; width: 30px; height: 30px; line-height: 30px; font-weight: 400; }
