@@ -497,6 +497,38 @@ function Dashboard({ data, sync, onRefresh, onNavigate, search, setSearch, filte
   )
 }
 
+function BottomTabBar({ activePage, onNavigate }) {
+  return (
+    <nav className="bottom-tab-bar" aria-label="Navigasi cepat ponsel">
+      {navigation.map(({ name, icon: Icon }) => {
+        const isActive = activePage === name
+        return (
+          <motion.button
+            key={name}
+            type="button"
+            className={`bottom-tab-item ${isActive ? 'bottom-tab-item--active' : ''}`}
+            onClick={() => onNavigate(name)}
+            whileTap={{ scale: 0.9 }}
+            aria-current={isActive ? 'page' : undefined}
+          >
+            <span className="bottom-tab-icon-wrap">
+              <Icon size={19} />
+              {isActive && (
+                <motion.span
+                  className="bottom-tab-pill-indicator"
+                  layoutId="bottomTabIndicator"
+                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                />
+              )}
+            </span>
+            <span className="bottom-tab-label">{name}</span>
+          </motion.button>
+        )
+      })}
+    </nav>
+  )
+}
+
 function SecondaryPage({ page, data, sync }) {
   const descriptions = {
     Kendaraan: 'Kenali armada dan lihat status lokasi terakhirnya.',
@@ -759,6 +791,7 @@ function App() {
           </footer>
         </main>
       </div>
+      <BottomTabBar activePage={page} onNavigate={navigate} />
     </div>
   )
 }
