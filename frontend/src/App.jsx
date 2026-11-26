@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import gsap from 'gsap'
 import {
   Activity, AlertTriangle, ArrowRight, ArrowUpRight, BusFront, Check, ChevronDown, ChevronUp, CircleHelp, Clock3,
   Compass, Gauge, LayoutDashboard, ListFilter, LogOut, MapPin,
@@ -98,7 +99,11 @@ function PageHeader({ title, subtitle, connected = false, loading = false }) {
 
 function StatCard({ icon: Icon, tone, value, label, detail }) {
   return (
-    <div className={`stat-card stat-card--${tone}`}>
+    <motion.div
+      className={`stat-card stat-card--${tone}`}
+      whileHover={{ y: -4, boxShadow: '0 8px 20px -4px rgba(34, 62, 40, 0.12)' }}
+      transition={{ type: 'spring', stiffness: 450, damping: 25 }}
+    >
       <div className="stat-top">
         <span className={`stat-icon stat-icon--${tone}`}><Icon size={21} /></span>
         <span className="stat-caption">RINGKASAN</span>
@@ -106,7 +111,7 @@ function StatCard({ icon: Icon, tone, value, label, detail }) {
       <strong>{value}</strong>
       <span className="stat-label">{label}</span>
       <small>{detail}</small>
-    </div>
+    </motion.div>
   )
 }
 
@@ -167,12 +172,15 @@ function VehicleList({ vehicles, selectedId, onSelect, search, setSearch, filter
       </div>
       <div className="vehicle-items">
         {vehicles.length ? vehicles.map((vehicle) => (
-          <button
+          <motion.button
             key={vehicle.id}
             type="button"
             className={`vehicle-item ${selectedId === vehicle.id ? 'vehicle-item--selected' : ''}`}
             aria-pressed={selectedId === vehicle.id}
             onClick={() => onSelect(vehicle.id)}
+            whileHover={{ x: 3 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
           >
             <span className={`vehicle-dot vehicle-dot--${statusTone(vehicle.locationStatus)}`} aria-hidden="true" />
             <span className="vehicle-info">
@@ -181,7 +189,7 @@ function VehicleList({ vehicles, selectedId, onSelect, search, setSearch, filter
               <small>{formatSpeed(vehicle.speed)}</small>
             </span>
             <ChevronDown className="vehicle-chevron" size={16} />
-          </button>
+          </motion.button>
         )) : (
           <div className="empty-list">{loading ? <LoaderCircle size={28} className="spin" /> : <BusFront size={28} />}<strong>{loading ? 'Memuat armada...' : search || filter !== 'Semua' ? 'Kendaraan tidak ditemukan' : 'Belum ada kendaraan'}</strong><p>{search || filter !== 'Semua' ? 'Coba kata kunci atau filter lainnya.' : 'Kendaraan yang tersedia akan muncul di sini.'}</p></div>
         )}
@@ -324,6 +332,44 @@ function FloatingPill({ selectedVehicle, onCenter }) {
   )
 }
 
+function AnimatedVehicleMarker({ vehicle, icon }) {
+  const markerRef = useRef(null)
+  const posRef = useRef({ lat: vehicle.position[0], lng: vehicle.position[1] })
+
+  useEffect(() => {
+    if (!markerRef.current || !vehicle.position) return
+
+    const targetLat = vehicle.position[0]
+    const targetLng = vehicle.position[1]
+
+    if (posRef.current.lat !== targetLat || posRef.current.lng !== targetLng) {
+      gsap.to(posRef.current, {
+        lat: targetLat,
+        lng: targetLng,
+        duration: 1.8,
+        ease: 'power2.out',
+        onUpdate: () => {
+          if (markerRef.current) {
+            markerRef.current.setLatLng([posRef.current.lat, posRef.current.lng])
+          }
+        },
+      })
+    }
+  }, [vehicle.position])
+
+  return (
+    <Marker ref={markerRef} position={vehicle.position} icon={icon}>
+      <Popup>
+        <strong>{vehicle.plate}</strong>
+        <p>{vehicle.name}</p>
+        <small>{statusText[vehicle.locationStatus] ?? vehicle.locationStatus}</small>
+        <p>{formatPosition(vehicle.position)}</p>
+        <small>GPS: {formatTime(vehicle.observedAt)}</small>
+      </Popup>
+    </Marker>
+  )
+}
+
 function LiveMap({ vehicles, selectedVehicle, focusKey, targets, onCenter, children }) {
   const points = [routeOrigin, ...(targets.length ? targets : defaultTargets)]
   return (
@@ -357,15 +403,7 @@ function LiveMap({ vehicles, selectedVehicle, focusKey, targets, onCenter, child
           </CircleMarker>
         ))}
         {vehicles.filter((vehicle) => vehicle.position).map((vehicle) => (
-          <Marker key={vehicle.id} position={vehicle.position} icon={vehicleIcon}>
-            <Popup>
-              <strong>{vehicle.plate}</strong>
-              <p>{vehicle.name}</p>
-              <small>{statusText[vehicle.locationStatus] ?? vehicle.locationStatus}</small>
-              <p>{formatPosition(vehicle.position)}</p>
-              <small>GPS: {formatTime(vehicle.observedAt)}</small>
-            </Popup>
-          </Marker>
+          <AnimatedVehicleMarker key={vehicle.id} vehicle={vehicle} icon={vehicleIcon} />
         ))}
         {selectedVehicle?.position && <FocusMap position={selectedVehicle.position} focusKey={focusKey} />}
       </MapContainer>
@@ -773,18 +811,28 @@ function App() {
         </aside>
 
         <main className="main-area" id="main-content" tabIndex={-1}>
-          {['Pemantauan', 'Dashboard'].includes(page) ? (
-            <Dashboard
-              data={data}
-              sync={sync}
-              onRefresh={() => setRefreshKey((key) => key + 1)}
-              onNavigate={navigate}
-              search={search}
-              setSearch={setSearch}
-              filter={filter}
-              setFilter={setFilter}
-            />
-          ) : <SecondaryPage page={page} data={data} sync={sync} />}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={page}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+            >
+              {['Pemantauan', 'Dashboard'].includes(page) ? (
+                <Dashboard
+                  data={data}
+                  sync={sync}
+                  onRefresh={() => setRefreshKey((key) => key + 1)}
+                  onNavigate={navigate}
+                  search={search}
+                  setSearch={setSearch}
+                  filter={filter}
+                  setFilter={setFilter}
+                />
+              ) : <SecondaryPage page={page} data={data} sync={sync} />}
+            </motion.div>
+          </AnimatePresence>
           <footer className="site-footer">
             <span>© {new Date().getFullYear()} PM-TRAVEL · Sistem Pemantauan Travel</span>
             <span><ShieldCheck size={12} />Ruang operasional armada</span>

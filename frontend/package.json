@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "gsap": "^3.15.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.70.0",
     "motion": "^14.14.0",
