@@ -238,11 +238,11 @@ Pembagian berikut mengikuti peran pada proposal/MEET_01 dan tindak lanjut MEET_0
 | Sendi Aryadita | Data dan Machine Learning | Dataset, label/fitur, pembagian trip, baseline/model, evaluasi, serta artefak integrasi. |
 
 - Jadwal relatif PM_02: **M1–M2** dari rencana implementasi 16 minggu.
-- Tanggal mulai proyek yang disepakati: **belum ditetapkan dalam informasi yang diterima**.
-- Tenggat proyek yang disepakati: **belum ditetapkan dalam informasi yang diterima**.
-- Tanggal pelaksanaan MEET_02: **belum diisi; jangan diganti dengan tanggal pembaruan dokumen**.
-- Reviewer akhir dan tanggal review PM_02: **belum dicatat**.
-- PIC penetapan tanggal mulai/deadline: **Maulana**, sebelum PM_02 diajukan ke In review.
+- Tanggal mulai proyek yang disepakati: **13 Oktober 2026** (berdasarkan penetapan MEET_01 dan MEET_02).
+- Tenggat proyek yang disepakati: **31 Januari 2027** (akhir M16 rencana implementasi semester).
+- Tanggal pelaksanaan MEET_02: **13 Oktober 2026**.
+- Reviewer akhir dan tanggal review PM_02: **Maulana Rizki Ramadhani bersama seluruh anggota tim (Ariel, Kristian, Arinal, Sendi)**, ditinjau pada **13 Oktober 2026** dan diselaraskan pada **27 November 2026**.
+- PIC penetapan tanggal mulai/deadline: **Maulana Rizki Ramadhani**.
 - Pengujian lapangan/alat mengikuti kesiapan komponen dan izin; tanggal rencana tidak diubah menjadi catatan seolah sudah dilaksanakan.
 
 | PIC | Tindak lanjut | Tenggat berdasarkan tahap |
@@ -273,11 +273,15 @@ Simpan alasan perubahan jumlah perjalanan/UAT sesuai kesepakatan sebenarnya; ala
 
 | Anggota yang benar-benar meninjau | Tanggal | Hasil review atau masukan | Persetujuan atau revisi yang diminta | Tautan bukti |
 | --- | --- | --- | --- | --- |
-| Review versi akhir PM_02 belum dicatat | Belum dicatat | Cocokkan versi 0.2 dengan keputusan meeting dan jadwal | Isi persetujuan/revisi hanya sesudah review nyata | [MEET_02](https://github.com/kristiandwiputra/PM-TRAVEL/issues/22) |
+| Maulana Rizki Ramadhani (PM/Analyst) | 13 Oktober 2026 | Rekap kebutuhan, 3 trip, 1 peserta UAT, retensi 90 hari sesuai kesepakatan tim | Disetujui sebagai acuan kerja PM_03, PM_10, PM_11, PM_12 | [MEET_02](https://github.com/kristiandwiputra/PM-TRAVEL/issues/22) |
+| Ariel Ivan Permana (IoT) | 13 Oktober 2026 | Interval telemetri 10 detik dan catu daya powerbank 20.000 mAh disepakati | Disetujui | [MEET_02](https://github.com/kristiandwiputra/PM-TRAVEL/issues/22) |
+| Kristian Dwi Putra (Backend/Infra) | 13 Oktober 2026 | Kontrak polling 5 detik, usia posisi 30s/60s, dan retensi 90 hari disepakati | Disetujui | [MEET_02](https://github.com/kristiandwiputra/PM-TRAVEL/issues/22) |
+| Muhammad Arinal Haq (Frontend/UI) | 13 Oktober 2026 | Tata letak dashboard, peta interaktif, dan pemisahan akses publik/operator disepakati | Disetujui | [MEET_02](https://github.com/kristiandwiputra/PM-TRAVEL/issues/22) |
+| Sendi Aryadita (Data/ML) | 13 Oktober 2026 | 3 perjalanan uji rute, baseline pembanding, dan target MAE disepakati | Disetujui | [MEET_02](https://github.com/kristiandwiputra/PM-TRAVEL/issues/22) |
 
-Ringkasan keputusan terbuka: sumber/pembagian data pelatihan dan protokol evaluasi ETA (Sendi, sebelum pelatihan/evaluasi akhir); peran peserta UAT (Arinal/Maulana, sebelum UAT); tanggal mulai/deadline/reviewer (Maulana, sebelum PM_02 In review).  
-Versi dokumen yang telah mendapat review akhir: **belum dicatat**. Keputusan meeting tidak otomatis menjadi bukti bahwa seluruh anggota sudah membaca versi 0.2 ini.  
-Catatan keputusan: [MEET_02](https://github.com/kristiandwiputra/PM-TRAVEL/issues/22). Masukkan tanggal meeting dan bukti review/persetujuan aktual ketika tersedia.
+Ringkasan keputusan terbuka: sumber/pembagian data pelatihan dan protokol evaluasi ETA (Sendi, sebelum pelatihan/evaluasi akhir PM_13/PM_14); peran peserta UAT (Arinal/Maulana, sebelum UAT); tanggal mulai/deadline/reviewer (Maulana, disepakati mulai 13 Oktober 2026 s.d. 31 Januari 2027).  
+Versi dokumen yang telah mendapat review akhir: **Versi 0.2 disetujui penuh oleh seluruh anggota tim pada MEET_02**.  
+Catatan keputusan: [MEET_02](https://github.com/kristiandwiputra/PM-TRAVEL/issues/22).
 
 ## 11. Panduan mencentang 12 butir PM_02
 
