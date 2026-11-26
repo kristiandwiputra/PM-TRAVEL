@@ -2,8 +2,8 @@
 
 :root {
   font-family: 'DM Sans', 'Segoe UI', Arial, sans-serif;
-  color: #193c3b;
-  background: #eaf5f3;
+  color: #293e2b;
+  background: #f5f7f5;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -13,11 +13,12 @@
 * { box-sizing: border-box; }
 html { min-width: 320px; }
 body { margin: 0; min-width: 320px; }
-button, input { font: inherit; }
+button, input, select { font: inherit; }
 button { cursor: pointer; }
-button:focus-visible, input:focus-visible {
-  outline: 3px solid rgba(21, 164, 151, 0.36);
+button:focus-visible, input:focus-visible, a:focus-visible {
+  outline: 3px solid #91aa72;
   outline-offset: 2px;
 }
 a { color: inherit; }
 #root { min-height: 100vh; }
+::selection { background: #d8ee9b; color: #183e32; }

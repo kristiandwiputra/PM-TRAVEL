@@ -71,6 +71,10 @@ export async function login(email, password) {
   return token
 }
 
+export function getProfile(token) {
+  return request('/auth/me', { token })
+}
+
 function asList(value, names) {
   if (Array.isArray(value)) return value
   for (const name of [...names, 'items', 'results', 'data']) {

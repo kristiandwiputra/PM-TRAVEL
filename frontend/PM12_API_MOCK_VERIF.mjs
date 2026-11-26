@@ -1,6 +1,6 @@
 // Pengujian mock kontrak dasar; TIDAK menghubungi FastAPI atau database asli.
 import assert from 'node:assert/strict'
-import { loadDashboard, login } from './src/api.js'
+import { getProfile, loadDashboard, login } from './src/api.js'
 
 const fakeJSON = (value, status = 200) => new Response(JSON.stringify(value), {
   status,
@@ -11,10 +11,12 @@ globalThis.fetch = async (url, options = {}) => {
   const path = new URL(url, 'http://localhost:5173').pathname
   if (path === '/api/auth/login') {
     const input = JSON.parse(options.body)
-    assert.equal(input.username, 'operator')
+    assert.equal(input.email, 'operator@example.com')
+    assert.equal(input.password, 'password-mock')
     return fakeJSON({ access_token: 'TOKEN-MOCK' })
   }
   assert.equal(options.headers.Authorization, 'Bearer TOKEN-MOCK')
+  if (path === '/api/auth/me') return fakeJSON({ email: 'operator@example.com', role: 'operator' })
   if (path === '/api/vehicles/') return fakeJSON({ vehicles: [{ vehicle_id: 'PMT-001', plate_number: 'QA-001' }] })
   if (path === '/api/trips/') return fakeJSON({ trips: [{ trip_id: 'TRIP-1', vehicle_id: 'PMT-001', status: 'active', eta: { status: 'unavailable' } }] })
   if (path === '/api/route-targets/') return fakeJSON({ targets: [{ name: 'Hajimena', sequence_no: 1, latitude: -5.36, longitude: 105.22 }] })
@@ -26,8 +28,10 @@ globalThis.fetch = async (url, options = {}) => {
   throw new Error(`Endpoint tidak diharapkan: ${path}`)
 }
 
-const token = await login('operator', 'password-mock')
+const token = await login('operator@example.com', 'password-mock')
 assert.equal(token, 'TOKEN-MOCK')
+const profile = await getProfile(token)
+assert.equal(profile.role, 'operator')
 const data = await loadDashboard(token)
 assert.equal(data.vehicles.length, 1)
 assert.deepEqual(data.vehicles[0].position, [-5.345335, 105.241597])
