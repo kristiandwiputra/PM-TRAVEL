@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import gsap from 'gsap'
 import {
-  Activity, AlertTriangle, ArrowRight, ArrowUpRight, BusFront, Check, ChevronDown, ChevronUp, CircleHelp, Clock3,
-  Compass, Gauge, LayoutDashboard, ListFilter, LogOut, MapPin,
-  Menu, Navigation, RadioTower, RefreshCw, Route, Search, Settings2,
-  Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, ShieldCheck, WifiOff, X, Zap,
+  Activity, AlertTriangle, ArrowRight, ArrowUpRight, Ban, BusFront, Check, CheckCircle2, ChevronDown, ChevronUp, CircleHelp, Clock3,
+  Compass, Copy, Eye, EyeOff, FileText, Gauge, LayoutDashboard, ListFilter, LoaderCircle, LockKeyhole, LogOut, Mail, MapPin,
+  Menu, Navigation, Play, Plus, RadioTower, RefreshCw, Route, Search, Settings2, ShieldAlert, ShieldCheck, WifiOff, X, Zap,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
-import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { ApiError, getProfile, getPublicTrip, loadDashboard, login, REFRESH_INTERVAL_MS } from './api'
+import {
+  ApiError, arriveHajimena, cancelTrip, completeTrip, createTrip, getProfile,
+  getPublicTrip, getTrip, getTripPositions, listTrips, loadDashboard, login,
+  REFRESH_INTERVAL_MS, startTrip,
+} from './api'
 import 'leaflet/dist/leaflet.css'
 import './App.css'
 
@@ -371,47 +374,108 @@ function AnimatedVehicleMarker({ vehicle, icon }) {
 }
 
 function LiveMap({ vehicles, selectedVehicle, focusKey, targets, onCenter, children }) {
+  const [mapType, setMapType] = useState('m')
   const points = [routeOrigin, ...(targets.length ? targets : defaultTargets)]
+
+  const tileConfig = {
+    m: {
+      name: 'Peta Jalan',
+      url: 'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',
+      maxZoom: 20,
+    },
+    y: {
+      name: 'Satelit',
+      url: 'https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+      maxZoom: 20,
+    },
+    p: {
+      name: 'Medan',
+      url: 'https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',
+      maxZoom: 20,
+    },
+  }
+
+  const activeTile = tileConfig[mapType] || tileConfig.m
+
   return (
     <div className="map-shell">
       <div className="map-canvas">
-      <FloatingPill selectedVehicle={selectedVehicle} onCenter={onCenter} />
-      <MapContainer center={[-5.17, 105.04]} zoom={10} scrollWheelZoom={false} className="travel-map">
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <FitRoute points={points} />
-        <Polyline
-          positions={points.map((point) => point.position)}
-          pathOptions={{ color: '#229c89', weight: 3, opacity: 0.75, dashArray: '8, 8' }}
-        />
-        {points.map((point, index) => (
-          <CircleMarker
-            key={`${point.name}-${index}`}
-            center={point.position}
-            radius={index === 0 ? 10 : 8}
-            pathOptions={{
-              color: index === 0 ? '#d97735' : '#0b736a',
-              fillColor: index === 0 ? '#ffb267' : '#35c2b1',
-              fillOpacity: 0.9,
-              weight: 3,
-            }}
+        <FloatingPill selectedVehicle={selectedVehicle} onCenter={onCenter} />
+        
+        <div className="map-layer-selector">
+          <button
+            type="button"
+            className={`map-layer-btn ${mapType === 'm' ? 'map-layer-btn--active' : ''}`}
+            onClick={() => setMapType('m')}
+            title="Tampilan Peta Jalan Google Maps (Warna jalan & tol)"
           >
-            <Tooltip direction="top" offset={[0, -11]} permanent>{point.name}</Tooltip>
-            <Popup>{index === 0 ? 'Titik awal referensi' : 'Target perjalanan'}: {point.name}</Popup>
-          </CircleMarker>
-        ))}
-        {vehicles.filter((vehicle) => vehicle.position).map((vehicle) => (
-          <AnimatedVehicleMarker key={vehicle.id} vehicle={vehicle} icon={vehicleIcon} />
-        ))}
-        {selectedVehicle?.position && <FocusMap position={selectedVehicle.position} focusKey={focusKey} />}
-      </MapContainer>
-      <div className="map-legend" aria-label="Legenda peta">
-        <span><i className="legend-pin" /> Posisi kendaraan</span>
-        <span><i className="legend-origin" /> Titik awal</span>
-        <span><i className="legend-target" /> Target</span>
-      </div>
+            Peta Jalan
+          </button>
+          <button
+            type="button"
+            className={`map-layer-btn ${mapType === 'y' ? 'map-layer-btn--active' : ''}`}
+            onClick={() => setMapType('y')}
+            title="Tampilan Satelit & Jalan Google Maps"
+          >
+            Satelit
+          </button>
+          <button
+            type="button"
+            className={`map-layer-btn ${mapType === 'p' ? 'map-layer-btn--active' : ''}`}
+            onClick={() => setMapType('p')}
+            title="Tampilan Topografi & Kontur"
+          >
+            Medan
+          </button>
+        </div>
+
+        <MapContainer
+          center={[-5.17, 105.04]}
+          zoom={10}
+          zoomSnap={0.25}
+          zoomDelta={0.5}
+          wheelPxPerZoomLevel={120}
+          wheelDebounceTime={40}
+          scrollWheelZoom={true}
+          doubleClickZoom={true}
+          touchZoom={true}
+          zoomAnimation={true}
+          className="travel-map"
+        >
+          <TileLayer
+            key={mapType}
+            attribution="&copy; Google Maps"
+            url={activeTile.url}
+            subdomains={['mt0', 'mt1', 'mt2', 'mt3']}
+            maxZoom={activeTile.maxZoom}
+          />
+          <FitRoute points={points} />
+          {points.map((point, index) => (
+            <CircleMarker
+              key={`${point.name}-${index}`}
+              center={point.position}
+              radius={index === 0 ? 8 : 7}
+              pathOptions={{
+                color: index === 0 ? '#c86b2f' : '#1e6b52',
+                fillColor: index === 0 ? '#ff9a47' : '#4bb38c',
+                fillOpacity: 0.85,
+                weight: 2,
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -8]}>{point.name}</Tooltip>
+              <Popup>{index === 0 ? 'Titik awal referensi' : 'Titik singgah rute'}: {point.name}</Popup>
+            </CircleMarker>
+          ))}
+          {vehicles.filter((vehicle) => vehicle.position).map((vehicle) => (
+            <AnimatedVehicleMarker key={vehicle.id} vehicle={vehicle} icon={vehicleIcon} />
+          ))}
+          {selectedVehicle?.position && <FocusMap position={selectedVehicle.position} focusKey={focusKey} />}
+        </MapContainer>
+        <div className="map-legend" aria-label="Legenda peta">
+          <span><i className="legend-pin" /> Posisi kendaraan (Real-time)</span>
+          <span><i className="legend-origin" /> Titik awal</span>
+          <span><i className="legend-target" /> Titik singgah</span>
+        </div>
       </div>
       {children}
     </div>
@@ -441,7 +505,7 @@ function Dashboard({ data, sync, onRefresh, onNavigate, search, setSearch, filte
     <>
       <PageHeader
         title="Dashboard armada"
-        subtitle="Setiap kendaraan, setiap perjalanan. Semua dalam pantauan."
+        subtitle="Pemantauan posisi armada dan telemetri IoT rute koridor Lampung."
         connected={sync.connected}
         loading={sync.loading}
       />
@@ -477,7 +541,7 @@ function Dashboard({ data, sync, onRefresh, onNavigate, search, setSearch, filte
         </div>
       </div>
 
-      <div className="corridor-bar"><span><Route size={15} />KORIDOR LAMPUNG</span><div>Tanjung Karang <ChevronDown size={13} /> Hajimena <ChevronDown size={13} /> Kotabumi</div></div>
+      <div className="corridor-bar"><span><Route size={15} />KORIDOR LAMPUNG</span><div>Tanjung Karang <ArrowRight size={13} /> Hajimena <ArrowRight size={13} /> Kotabumi</div></div>
       <LiveMap
         vehicles={vehicles}
         selectedVehicle={selectedVehicle}
@@ -614,6 +678,579 @@ function SecondaryPage({ page, data, sync }) {
   )
 }
 
+function TripStatusPill({ status }) {
+  if (status === 'active') return <StatusPill tone="mint">Berlangsung</StatusPill>
+  if (status === 'planned') return <span className="status-pill status-pill--blue">Terjadwal</span>
+  if (status === 'completed') return <span className="status-pill status-pill--mint">Selesai</span>
+  if (status === 'canceled') return <span className="status-pill status-pill--slate">Dibatalkan</span>
+  return <StatusPill tone="amber">{status}</StatusPill>
+}
+
+function TripDetailModal({ trip, token, onClose, onUpdated }) {
+  const [loading, setLoading] = useState(false)
+  const [detail, setDetail] = useState(trip)
+  const [positions, setPositions] = useState([])
+  const [error, setError] = useState('')
+  const [successInfo, setSuccessInfo] = useState(null)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    async function loadData() {
+      try {
+        const [tripData, posData] = await Promise.all([
+          getTrip(token, trip.trip_id),
+          getTripPositions(token, trip.trip_id).catch(() => []),
+        ])
+        if (active) {
+          setDetail(tripData)
+          setPositions(posData || [])
+        }
+      } catch (err) {
+        if (active) {
+          if (err.status === 403 || err.status === 404) {
+            setError('Akses ditolak: Anda tidak memiliki izin atau kendaraan ini di luar kewenangan akun Anda (Otorisasi backend ditegakkan).')
+          } else {
+            setError(err.message || 'Gagal memuat detail perjalanan.')
+          }
+        }
+      }
+    }
+    loadData()
+    return () => { active = false }
+  }, [trip.trip_id, token])
+
+  const handleStart = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await startTrip(token, detail.trip_id)
+      setSuccessInfo(res)
+      setDetail((prev) => ({ ...prev, status: 'active', started_at: new Date().toISOString() }))
+      onUpdated()
+    } catch (err) {
+      if (err.status === 403 || err.status === 404) {
+        setError('Akses ditolak: Tidak dapat memulai perjalanan untuk kendaraan ini.')
+      } else {
+        setError(err.message || 'Gagal memulai perjalanan.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleArriveHajimena = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await arriveHajimena(token, detail.trip_id)
+      setDetail((prev) => ({ ...prev, arrived_hajimena_at: res.arrived_hajimena_at }))
+      onUpdated()
+    } catch (err) {
+      if (err.status === 403 || err.status === 404) {
+        setError('Akses ditolak: Tidak dapat mencatat kedatangan Hajimena.')
+      } else {
+        setError(err.message || 'Gagal mencatat kedatangan Hajimena.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleComplete = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await completeTrip(token, detail.trip_id)
+      setDetail((prev) => ({ ...prev, status: 'completed', ended_at: res.ended_at }))
+      onUpdated()
+    } catch (err) {
+      if (err.status === 403 || err.status === 404) {
+        setError('Akses ditolak: Tidak dapat menyelesaikan perjalanan.')
+      } else {
+        setError(err.message || 'Gagal menyelesaikan perjalanan.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCancel = async () => {
+    if (!window.confirm('Apakah Anda yakin ingin membatalkan perjalanan ini?')) return
+    setLoading(true)
+    setError('')
+    try {
+      const res = await cancelTrip(token, detail.trip_id)
+      setDetail((prev) => ({ ...prev, status: 'canceled', ended_at: res.ended_at }))
+      onUpdated()
+    } catch (err) {
+      if (err.status === 403 || err.status === 404) {
+        setError('Akses ditolak: Tidak dapat membatalkan perjalanan.')
+      } else {
+        setError(err.message || 'Gagal membatalkan perjalanan.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const copyPublicLink = (code) => {
+    const url = `${window.location.origin}/?trip=${encodeURIComponent(code)}`
+    navigator.clipboard?.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="trip-modal-overlay" onClick={onClose}>
+      <div className="trip-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="trip-modal-header">
+          <h2>
+            <FileText size={20} />
+            <span>Detail & Kontrol Perjalanan</span>
+          </h2>
+          <button type="button" className="trip-modal-close" onClick={onClose} aria-label="Tutup modal">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="trip-modal-body">
+          {error && (
+            <div className="access-denied-box">
+              <ShieldAlert size={22} />
+              <div>{error}</div>
+            </div>
+          )}
+
+          {successInfo?.public_code && (
+            <div className="public-token-callout">
+              <div className="public-token-callout-header">
+                <div>
+                  <strong style={{ fontSize: '13px', color: '#17422c' }}>Kode Pelacakan Penumpang:</strong>
+                  <div style={{ marginTop: '4px' }}>
+                    <span className="public-token-code">{successInfo.public_code}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="public-token-copy-btn"
+                  onClick={() => copyPublicLink(successInfo.public_code)}
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  <span>{copied ? 'Tersalin!' : 'Salin Tautan'}</span>
+                </button>
+              </div>
+              <p className="public-token-warning">
+                Bagikan tautan pelacakan ini kepada penumpang. Kode ini hanya dibuat satu kali dan akan otomatis dicabut saat armada tiba & perjalanan diselesaikan di Kotabumi demi menjaga privasi.
+              </p>
+            </div>
+          )}
+
+          <div className="trip-info-grid">
+            <div className="trip-info-item">
+              <span>ID Perjalanan</span>
+              <strong className="trip-id-cell">{detail.trip_id}</strong>
+            </div>
+            <div className="trip-info-item">
+              <span>Kendaraan</span>
+              <span className="trip-plate-badge">{detail.plate_number || trip.plate_number || '—'}</span>
+            </div>
+            <div className="trip-info-item">
+              <span>Status Perjalanan</span>
+              <div><TripStatusPill status={detail.status} /></div>
+            </div>
+            <div className="trip-info-item">
+              <span>Waktu Mulai</span>
+              <strong>{formatTime(detail.started_at)}</strong>
+            </div>
+            <div className="trip-info-item">
+              <span>Kedatangan Hajimena</span>
+              <strong>{detail.arrived_hajimena_at ? `Tiba: ${formatTime(detail.arrived_hajimena_at)}` : 'Belum tiba'}</strong>
+            </div>
+            <div className="trip-info-item">
+              <span>Waktu Selesai (Kotabumi)</span>
+              <strong>{formatTime(detail.ended_at)}</strong>
+            </div>
+          </div>
+
+          <div className="trip-controls-card">
+            <span className="trip-controls-title">Kontrol Alur Perjalanan (Operator)</span>
+            <div className="trip-controls-actions">
+              {detail.status === 'planned' && (
+                <button
+                  type="button"
+                  className="trip-btn-action trip-btn-action--start"
+                  onClick={handleStart}
+                  disabled={loading}
+                >
+                  <Play size={15} />
+                  <span>Mulai Perjalanan</span>
+                </button>
+              )}
+
+              {detail.status === 'active' && !detail.arrived_hajimena_at && (
+                <button
+                  type="button"
+                  className="trip-btn-action trip-btn-action--arrive"
+                  onClick={handleArriveHajimena}
+                  disabled={loading}
+                >
+                  <MapPin size={15} />
+                  <span>Catat Tiba di Hajimena</span>
+                </button>
+              )}
+
+              {detail.status === 'active' && detail.arrived_hajimena_at && (
+                <button
+                  type="button"
+                  className="trip-btn-action trip-btn-action--complete"
+                  onClick={handleComplete}
+                  disabled={loading}
+                >
+                  <CheckCircle2 size={15} />
+                  <span>Selesaikan di Kotabumi (Akhiri Trip)</span>
+                </button>
+              )}
+
+              {['planned', 'active'].includes(detail.status) && (
+                <button
+                  type="button"
+                  className="trip-btn-action trip-btn-action--cancel"
+                  onClick={handleCancel}
+                  disabled={loading}
+                >
+                  <Ban size={15} />
+                  <span>Batalkan</span>
+                </button>
+              )}
+
+              {detail.status === 'completed' && (
+                <span style={{ fontSize: '12px', color: '#276b42', fontWeight: 600 }}>
+                  Perjalanan telah selesai di Kotabumi. Kode publik penumpang telah dinonaktifkan.
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="trip-modal-section">
+            <h3 className="trip-modal-section-title">Riwayat Titik Telemetri GPS ({positions.length} titik)</h3>
+            <div className="trip-table-wrap" style={{ maxHeight: '200px' }}>
+              <table className="trip-positions-table">
+                <thead>
+                  <tr>
+                    <th>Waktu Pengamatan (WIB)</th>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                    <th>Kecepatan</th>
+                    <th>Status GPS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {positions.length ? (
+                    positions.map((pos, idx) => (
+                      <tr key={pos.id ?? idx}>
+                        <td>{formatTime(pos.observed_at)}</td>
+                        <td>{pos.latitude != null ? Number(pos.latitude).toFixed(6) : '—'}</td>
+                        <td>{pos.longitude != null ? Number(pos.longitude).toFixed(6) : '—'}</td>
+                        <td>{pos.speed_kmh != null ? `${pos.speed_kmh} km/jam` : '—'}</td>
+                        <td>
+                          <StatusPill tone={pos.gps_valid ? 'mint' : 'rose'}>
+                            {pos.gps_valid ? 'Valid' : 'Invalid'}
+                          </StatusPill>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="5" style={{ textAlign: 'center', padding: '16px', color: '#63796d' }}>
+                        Belum ada riwayat koordinat GPS untuk perjalanan ini.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CreateTripModal({ token, vehicles, onClose, onCreated }) {
+  const [selectedVehicle, setSelectedVehicle] = useState(vehicles[0]?.id || '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (e) => {
+    e.preventDefault()
+    if (!selectedVehicle) return
+    setBusy(true)
+    setError('')
+    try {
+      await createTrip(token, selectedVehicle)
+      onCreated()
+      onClose()
+    } catch (err) {
+      if (err.status === 403 || err.status === 404) {
+        setError('Akses ditolak: Anda tidak memiliki wewenang untuk kendaraan ini.')
+      } else {
+        setError(err.message || 'Gagal membuat perjalanan baru.')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="trip-modal-overlay" onClick={onClose}>
+      <div className="trip-modal" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="trip-modal-header">
+          <h2>
+            <Plus size={20} />
+            <span>Buat Perjalanan Baru</span>
+          </h2>
+          <button type="button" className="trip-modal-close" onClick={onClose} aria-label="Tutup modal">
+            <X size={20} />
+          </button>
+        </div>
+        <form onSubmit={submit} className="trip-modal-body">
+          {error && (
+            <div className="access-denied-box">
+              <ShieldAlert size={20} />
+              <div>{error}</div>
+            </div>
+          )}
+          <div className="create-trip-form">
+            <div className="create-trip-field">
+              <label htmlFor="vehicle-select">Pilih Kendaraan Armada</label>
+              <select
+                id="vehicle-select"
+                className="create-trip-select"
+                value={selectedVehicle}
+                onChange={(e) => setSelectedVehicle(e.target.value)}
+                disabled={busy}
+              >
+                {vehicles.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.plate} — {v.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="create-trip-field">
+              <label>Rute & Koridor</label>
+              <div style={{ fontSize: '13px', color: '#2b503e', background: '#f5faf3', padding: '10px 14px', borderRadius: '8px', border: '1px solid #dce8d6' }}>
+                <strong>Koridor Lampung</strong>: Tanjung Karang ➔ Hajimena ➔ Kotabumi
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+            <button type="button" className="outline-button" onClick={onClose} disabled={busy}>
+              Batal
+            </button>
+            <button type="submit" className="trip-create-btn" disabled={busy || !selectedVehicle}>
+              {busy ? 'Menyimpan...' : 'Simpan Perjalanan (Planned)'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function TripManagementPage({ token, vehicles = [], onTripUpdated }) {
+  const [trips, setTrips] = useState([])
+  const [filter, setFilter] = useState('Semua')
+  const [loading, setLoading] = useState(true)
+  const [selectedTrip, setSelectedTrip] = useState(null)
+  const [showCreate, setShowCreate] = useState(false)
+  const [errorBanner, setErrorBanner] = useState('')
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    async function load() {
+      setLoading(true)
+      setErrorBanner('')
+      try {
+        const data = await listTrips(token, { status: filter })
+        if (active) setTrips(data)
+      } catch (err) {
+        if (active) {
+          if (err.status === 403) {
+            setErrorBanner('Akses ditolak: Akun Anda tidak memiliki hak membaca riwayat perjalanan ini.')
+          } else {
+            setErrorBanner(err.message || 'Gagal memuat daftar perjalanan.')
+          }
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+    load()
+    return () => { active = false }
+  }, [filter, token, refreshTrigger])
+
+  const counts = useMemo(() => {
+    return {
+      Semua: trips.length,
+      active: trips.filter((t) => t.status === 'active').length,
+      planned: trips.filter((t) => t.status === 'planned').length,
+      completed: trips.filter((t) => t.status === 'completed').length,
+      canceled: trips.filter((t) => t.status === 'canceled').length,
+    }
+  }, [trips])
+
+  return (
+    <>
+      <PageHeader
+        title="Riwayat & Manajemen Perjalanan"
+        subtitle="Pantau riwayat armada, kelola siklus trip, dan catat progres kedatangan koridor Lampung."
+        connected={true}
+        loading={loading}
+      />
+      {errorBanner && (
+        <div className="access-denied-box" style={{ marginBottom: '18px' }}>
+          <ShieldAlert size={20} />
+          <div>{errorBanner}</div>
+        </div>
+      )}
+
+      <div className="trip-management-card">
+        <div className="trip-toolbar">
+          <div className="trip-filter-tabs">
+            {['Semua', 'active', 'planned', 'completed', 'canceled'].map((st) => {
+              const label = {
+                Semua: 'Semua',
+                active: 'Berlangsung',
+                planned: 'Terjadwal',
+                completed: 'Selesai',
+                canceled: 'Dibatalkan',
+              }[st]
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  className={`trip-filter-tab ${filter === st ? 'trip-filter-tab--active' : ''}`}
+                  onClick={() => setFilter(st)}
+                >
+                  <span>{label}</span>
+                  {counts[st] != null && <span className="trip-filter-count">{counts[st]}</span>}
+                </button>
+              )
+            })}
+          </div>
+
+          <button
+            type="button"
+            className="trip-create-btn"
+            onClick={() => setShowCreate(true)}
+          >
+            <Plus size={16} />
+            <span>Buat Trip Baru</span>
+          </button>
+        </div>
+
+        <div className="trip-table-wrap">
+          <table className="trip-table">
+            <thead>
+              <tr>
+                <th scope="col">ID Perjalanan</th>
+                <th scope="col">Kendaraan</th>
+                <th scope="col">Status Perjalanan</th>
+                <th scope="col">Progres Koridor</th>
+                <th scope="col">Waktu Mulai</th>
+                <th scope="col">Waktu Selesai</th>
+                <th scope="col" style={{ textAlign: 'right' }}>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && !trips.length ? (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: '#63796d' }}>
+                    <LoaderCircle size={22} className="spin" style={{ margin: '0 auto 8px' }} />
+                    <div>Memuat riwayat perjalanan...</div>
+                  </td>
+                </tr>
+              ) : trips.length ? (
+                trips.map((trip) => {
+                  const vehicleObj = vehicles.find((v) => v.id === trip.vehicle_id)
+                  const plateText = trip.plate_number !== '—' ? trip.plate_number : vehicleObj?.plate || trip.vehicle_id || '—'
+                  return (
+                    <tr key={trip.trip_id}>
+                      <td className="trip-id-cell">{trip.trip_id}</td>
+                      <td>
+                        <span className="trip-plate-badge">{plateText}</span>
+                      </td>
+                      <td>
+                        <TripStatusPill status={trip.status} />
+                      </td>
+                      <td>
+                        <div className="trip-corridor-flow">
+                          <span>Tg. Karang</span>
+                          <span className="trip-corridor-arrow">➔</span>
+                          <strong style={{ color: trip.arrived_hajimena_at ? '#2d784c' : 'inherit' }}>
+                            {trip.arrived_hajimena_at ? 'Hajimena (Tiba)' : 'Hajimena'}
+                          </strong>
+                          <span className="trip-corridor-arrow">➔</span>
+                          <span>Kotabumi</span>
+                        </div>
+                      </td>
+                      <td>{formatTime(trip.started_at)}</td>
+                      <td>{formatTime(trip.ended_at)}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          className="trip-detail-btn"
+                          onClick={() => setSelectedTrip(trip)}
+                        >
+                          <Settings2 size={13} />
+                          <span>Kelola / Detail</span>
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan="7" style={{ textAlign: 'center', padding: '36px', color: '#63796d' }}>
+                    Tidak ada perjalanan yang sesuai dengan filter ini.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {selectedTrip && (
+        <TripDetailModal
+          trip={selectedTrip}
+          token={token}
+          onClose={() => setSelectedTrip(null)}
+          onUpdated={() => {
+            setRefreshTrigger((k) => k + 1)
+            onTripUpdated?.()
+          }}
+        />
+      )}
+
+      {showCreate && (
+        <CreateTripModal
+          token={token}
+          vehicles={vehicles}
+          onClose={() => setShowCreate(false)}
+          onCreated={() => {
+            setRefreshTrigger((k) => k + 1)
+            onTripUpdated?.()
+          }}
+        />
+      )}
+    </>
+  )
+}
+
 function Brand({ light = false }) {
   return <div className={`brand ${light ? 'brand--light' : ''}`} aria-label="PM-TRAVEL"><span className="brand-icon"><Navigation size={23} strokeWidth={2.4} /></span><span>pm<span className="brand-word">travel</span><span className="brand-period">.</span></span></div>
 }
@@ -707,6 +1344,33 @@ function PassengerTrackPage({ code, onBack }) {
             <p>{error}</p>
             <button type="button" className="floating-card-action" onClick={onBack} style={{ marginTop: '10px' }}>
               Coba Kode Lain
+            </button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  if (trip?.status === 'completed' || trip?.status === 'canceled') {
+    return (
+      <div className="passenger-shell">
+        <header className="passenger-topbar">
+          <Brand />
+          <button type="button" className="outline-button" onClick={onBack}>
+            <LogOut size={15} /> Kembali
+          </button>
+        </header>
+        <main className="passenger-main">
+          <div className="passenger-error-card">
+            <span className="passenger-error-icon" style={{ background: '#eaf5eb', color: '#276b42' }}>
+              <CheckCircle2 size={28} />
+            </span>
+            <h3>Perjalanan Telah Selesai</h3>
+            <p>
+              Armada telah tiba di tujuan akhir (Kotabumi) dan perjalanan telah resmi diselesaikan. Sesuai kebijakan privasi, kode akses publik untuk perjalanan ini telah dinonaktifkan.
+            </p>
+            <button type="button" className="floating-card-action" onClick={onBack} style={{ marginTop: '10px' }}>
+              Kembali ke Menu Utama
             </button>
           </div>
         </main>
@@ -1018,7 +1682,6 @@ function App() {
       <header className="topbar">
         <Brand />
         <div className="topbar-right">
-          <span className="topbar-region"><MapPin size={14} />Lampung, Indonesia</span>
           <button type="button" className="icon-button" aria-label="Bantuan" onClick={() => navigate('Pengaturan')}><CircleHelp size={20} /></button>
           <span className="header-divider" />
           <div className="user-chip"><span className="avatar">{(profile?.email ?? 'P').slice(0, 1).toUpperCase()}</span><span><strong>{profile?.role === 'admin' ? 'Administrator' : 'Operator'}</strong><small title={profile?.email}>{profile?.email}</small></span></div>
@@ -1045,10 +1708,9 @@ function App() {
               ><Icon size={19} /><span>{name}</span></button>
             ))}
           </nav>
-          <div className="sidebar-corridor"><span><Route size={15} />KORIDOR LAMPUNG</span><strong>Tanjung Karang</strong><i /><strong>Hajimena</strong><i /><strong>Kotabumi</strong><small>Terhubung di setiap perjalanan.</small></div>
+          <div className="sidebar-corridor"><span><Route size={15} />KORIDOR LAMPUNG</span><strong>Tanjung Karang</strong><i /><strong>Hajimena</strong><i /><strong>Kotabumi</strong></div>
           <div className="sidebar-bottom">
             <div className="sidebar-status"><span className={`live-dot ${sync.connected ? '' : 'live-dot--offline'}`} /><div><strong>{sync.loading ? 'Menghubungkan...' : sync.connected ? 'Sistem terhubung' : 'Koneksi terputus'}</strong><small>Pembaruan otomatis · 5 detik</small></div></div>
-            <div className="sidebar-footer">Satu ruang. Semua perjalanan.<br /><span>PM-TRAVEL · Lampung, Indonesia</span></div>
           </div>
         </aside>
 
@@ -1071,6 +1733,12 @@ function App() {
                   setSearch={setSearch}
                   filter={filter}
                   setFilter={setFilter}
+                />
+              ) : page === 'Perjalanan' ? (
+                <TripManagementPage
+                  token={token}
+                  vehicles={data.vehicles}
+                  onTripUpdated={() => setRefreshKey((key) => key + 1)}
                 />
               ) : <SecondaryPage page={page} data={data} sync={sync} />}
             </motion.div>
