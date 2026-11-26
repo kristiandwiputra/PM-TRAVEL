@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import re
+from uuid import uuid4
 from datetime import datetime, timezone
 
 import paho.mqtt.client as mqtt
@@ -256,6 +257,9 @@ def store_telemetry(topic: str, payload: bytes):
                     "Trip tidak terdaftar untuk kendaraan ini"
                 )
 
+            if trip['started_at'] is None:
+                raise ValueError('Trip belum dimulai; telemetri tidak dapat dikaitkan ke trip planned')
+
             if telemetry.observed_at is not None:
                 observed = telemetry.observed_at
 
@@ -404,9 +408,23 @@ def on_connect(client, userdata, flags, reason_code, properties):
     )
 
     if result == mqtt.MQTT_ERR_SUCCESS:
-        logger.info("Terhubung. Subscriber aktif.")
+        logger.info("Terhubung ke broker. Menunggu konfirmasi subscription...")
     else:
         logger.error("Gagal melakukan subscribe MQTT")
+
+
+def on_subscribe(client, userdata, mid, reason_codes, properties):
+    if any(code.is_failure for code in reason_codes):
+        logger.error('Broker menolak subscription: %s', ', '.join(str(code) for code in reason_codes))
+        return
+    logger.info('Subscription aktif. Menunggu pesan perangkat pada telemetry atau test.')
+
+
+def on_disconnect(client, userdata, disconnect_flags, reason_code, properties):
+    if reason_code.is_failure:
+        logger.warning('Koneksi broker terputus (%s); mencoba tersambung kembali.', reason_code)
+    else:
+        logger.info('Koneksi broker ditutup.')
 
 
 def on_message(client, userdata, message):
@@ -424,7 +442,12 @@ def on_message(client, userdata, message):
             payload,
         )
 
-    except (ValidationError, ValueError, UnicodeError) as exc:
+    except ValidationError as exc:
+        fields = ', '.join('.'.join(map(str, item['loc'])) or 'payload' for item in exc.errors())
+        logger.warning('Payload ditolak pada field %s dari %s', fields, message.topic)
+        return
+
+    except (ValueError, UnicodeError) as exc:
         logger.warning(
             "Pesan ditolak dari %s: %s",
             message.topic,
@@ -432,11 +455,8 @@ def on_message(client, userdata, message):
         )
         return
 
-    except SQLAlchemyError:
-        logger.exception(
-            "Penyimpanan database gagal pada topik %s",
-            message.topic,
-        )
+    except SQLAlchemyError as exc:
+        logger.error('Penyimpanan database gagal (%s). ACK tidak dikirim.', type(exc).__name__)
         return
 
     except Exception:
@@ -473,10 +493,14 @@ def on_message(client, userdata, message):
     )
 
 
-def main():
+def create_client():
+    # A shared fixed client ID makes brokers disconnect the other backend instance.
+    client_id = os.environ.get('MQTT_CLIENT_ID') or f'pmtravel-backend-{uuid4().hex[:12]}'
+    if not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', client_id):
+        raise ValueError('MQTT_CLIENT_ID harus 1–80 karakter huruf, angka, garis bawah, atau tanda hubung')
     client = mqtt.Client(
         mqtt.CallbackAPIVersion.VERSION2,
-        client_id="pmtravel-backend-subscriber",
+        client_id=client_id,
         protocol=mqtt.MQTTv311,
     )
 
@@ -486,22 +510,32 @@ def main():
     )
 
     client.on_connect = on_connect
+    client.on_subscribe = on_subscribe
+    client.on_disconnect = on_disconnect
     client.on_message = on_message
 
     client.reconnect_delay_set(
         min_delay=1,
         max_delay=30,
     )
+    return client
+
+
+def main():
+    client = create_client()
 
     logger.info("Menghubungkan subscriber ke broker MQTT...")
 
-    client.connect(
+    client.connect_async(
         settings.mqtt_host,
         settings.mqtt_port,
         keepalive=60,
     )
 
-    client.loop_forever()
+    try:
+        client.loop_forever(retry_first_connection=True)
+    except KeyboardInterrupt:
+        client.disconnect()
 
 
 if __name__ == "__main__":

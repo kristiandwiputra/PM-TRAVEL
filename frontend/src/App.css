@@ -606,6 +606,14 @@
 .pm-vehicle-marker { background: transparent; border: 0; }
 .pm-vehicle-marker-inner { position: relative; display: grid; place-items: center; width: 38px; height: 38px; border: 3px solid #338bd4; border-radius: 50%; background: #fff; color: #338bd4; box-shadow: 0 3px 14px #164e6840; }
 .pm-vehicle-marker-inner::before { position: absolute; inset: -9px; border: 2px solid #338bd47a; border-radius: 50%; content: ''; animation: marker-pulse 2s ease-out infinite; pointer-events: none; }
+.pm-vehicle-marker--amber .pm-vehicle-marker-inner { border-color: #b48936; color: #9b7424; box-shadow: 0 3px 14px #9b742426; }
+.pm-vehicle-marker--rose .pm-vehicle-marker-inner { border-color: #a58a82; color: #846b63; box-shadow: 0 3px 14px #846b6326; }
+.pm-vehicle-marker--amber .pm-vehicle-marker-inner::before,
+.pm-vehicle-marker--rose .pm-vehicle-marker-inner::before { animation: none; opacity: 0; }
+.vehicle-info .gps-state { font-weight: 600; white-space: normal; line-height: 1.5; }
+.vehicle-info .gps-state--mint { color: #427345; }
+.vehicle-info .gps-state--amber { color: #9b7424; }
+.vehicle-info .gps-state--rose { color: #a05b4c; }
 .detail-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 17px; margin-top: 24px; }
 .detail-card { min-width: 0; padding: 21px 23px; border: 1px solid #e2e8db; border-radius: 12px; background: #fff; }
 .detail-card-title { display: flex; align-items: center; gap: 9px; padding-bottom: 15px; border-bottom: 1px solid #edf0e8; color: #7b965d; }

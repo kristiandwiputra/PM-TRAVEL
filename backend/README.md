@@ -18,15 +18,41 @@ Jalankan dari folder `backend` dengan virtual environment yang sudah dipakai pro
 ```powershell
 $pmPython = Join-Path $env:LOCALAPPDATA 'PM-TRAVEL\backend-venv\Scripts\python.exe'
 & $pmPython -m pip install -r requirements_pm10.txt
-& $pmPython -m uvicorn main:app --host 127.0.0.1 --port 8001 --reload --no-access-log
+& $pmPython run_live.py
 ```
 
 Untuk virtual environment lain, ganti `$pmPython` dengan executable Python
 lingkungan tersebut. Buka [Swagger](http://127.0.0.1:8001/docs),
 [OpenAPI](http://127.0.0.1:8001/openapi.json), dan
 [health database](http://127.0.0.1:8001/health/db).
-Subscriber MQTT adalah proses terpisah; menjalankan API tidak menjalankan subscriber.
+`run_live.py` menjalankan API dan penerima MQTT dalam satu proses. Ctrl+C menghentikan
+keduanya. Jika API sudah berjalan di terminal lain, cukup jalankan penerima berikut:
+
+```powershell
+& $pmPython mqtt_subscriber.py
+```
+
+Menjalankan `uvicorn main:app` saja **tidak menerima data alat**. Pastikan penerima
+menampilkan `Subscription aktif`, lalu `GPS stored` atau `GPS duplicate` ketika
+alat mengirim pesan. Client ID penerima dibuat unik; `MQTT_CLIENT_ID` dapat
+ditetapkan lewat environment, dengan nilai berbeda untuk setiap penerima.
 Access log dimatikan agar kode publik yang berada di URL tidak tercatat oleh Uvicorn.
+
+### Jika peta tidak memperbarui lokasi
+
+1. `Server terhubung` di dashboard hanya membuktikan API dapat dibaca.
+2. Periksa `observed_at`/usia posisi dan `last_seen_at` dari endpoint lokasi kendaraan.
+   `last_seen_at` baru tetapi GPS lama/invalid menunjukkan pesan masuk tanpa fix GPS baru.
+3. Pastikan broker, port, dan topik alat sama dengan konfigurasi penerima. Status
+   connected pada MQTTX membuktikan koneksi MQTTX, bukan koneksi ESP32.
+4. Pastikan pesan baru muncul pada `pmtravel/PMT-001/telemetry` atau topik legacy
+   `pmtravel/PMT-001/test`, dan ACK cocok dengan `message_id`. Native firmware menahan
+   satu pesan sampai ACK aplikasi diterima; PUBACK broker saja belum cukup.
+5. Jika penerima terus reconnect, periksa penggunaan client ID yang sama oleh
+   proses lain. Jangan memakai client ID ESP32 untuk MQTTX.
+
+Dashboard menampilkan posisi terakhir dengan penanda tidak terkini bila pesan alat
+berhenti. Kegagalan API tidak diganti dengan koordinat atau perjalanan simulasi.
 
 ## Kontrak dan perilaku
 
@@ -57,6 +83,7 @@ Dari folder `backend`:
 ```powershell
 $pmPython = Join-Path $env:LOCALAPPDATA 'PM-TRAVEL\backend-venv\Scripts\python.exe'
 & $pmPython -m unittest discover -s tests -p 'test_pm10_*.py' -v
+& $pmPython -m unittest discover -s tests -p 'test_pm08_*.py' -v
 ```
 
 `test_pm10_contract.py` memeriksa batas freshness dan skema OpenAPI tanpa koneksi

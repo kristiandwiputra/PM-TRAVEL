@@ -45,6 +45,7 @@ const statusText = {
   no_update: 'Tidak ada pembaruan',
   no_location: 'Belum ada lokasi',
   invalid_timestamp: 'Waktu GPS tidak valid',
+  unavailable: 'Posisi tidak dapat dibaca',
 }
 
 function statusTone(status) {
@@ -66,6 +67,15 @@ function formatTime(value) {
 
 function formatSpeed(speed) {
   return speed === null || speed === undefined ? '—' : `${Number(speed).toFixed(1)} km/jam`
+}
+
+function formatAge(seconds) {
+  if (seconds === null || seconds === undefined || !Number.isFinite(Number(seconds))) return '—'
+  const age = Math.max(0, Math.floor(Number(seconds)))
+  if (age >= 86400) return `${Math.floor(age / 86400)} hari`
+  if (age >= 3600) return `${Math.floor(age / 3600)} jam`
+  if (age >= 60) return `${Math.floor(age / 60)} menit`
+  return `${age} detik`
 }
 
 function formatPosition(position) {
@@ -94,7 +104,7 @@ function PageHeader({ title, subtitle, connected = false, loading = false }) {
         <p className="page-subtitle">{subtitle}</p>
       </div>
       <StatusPill tone={loading ? 'amber' : connected ? 'mint' : 'rose'}>
-        {loading ? 'Menghubungkan...' : connected ? 'Sistem terhubung' : 'Koneksi terputus'}
+        {loading ? 'Menghubungkan...' : connected ? 'Server terhubung' : 'Koneksi server terputus'}
       </StatusPill>
     </div>
   )
@@ -187,9 +197,10 @@ function VehicleList({ vehicles, selectedId, onSelect, search, setSearch, filter
           >
             <span className={`vehicle-dot vehicle-dot--${statusTone(vehicle.locationStatus)}`} aria-hidden="true" />
             <span className="vehicle-info">
-              <strong>{vehicle.plate}</strong>
-              <small>{vehicle.id} • {statusText[vehicle.locationStatus] ?? vehicle.locationStatus}</small>
-              <small>{formatSpeed(vehicle.speed)}</small>
+              <strong title={vehicle.id}>{vehicle.plate}</strong>
+              <small>{vehicle.name}</small>
+              <small className={`gps-state gps-state--${statusTone(vehicle.locationStatus)}`}>{statusText[vehicle.locationStatus] ?? vehicle.locationStatus} · {formatAge(vehicle.ageSeconds)}</small>
+              <small>{vehicle.locationStatus === 'fresh' ? formatSpeed(vehicle.speed) : `Kecepatan terakhir: ${formatSpeed(vehicle.speed)}`}</small>
             </span>
             <ChevronDown className="vehicle-chevron" size={16} />
           </motion.button>
@@ -200,7 +211,7 @@ function VehicleList({ vehicles, selectedId, onSelect, search, setSearch, filter
       <div className={`qa-note ${connected ? 'qa-note--connected' : ''}`}>
         {connected ? <ShieldCheck size={17} /> : <WifiOff size={17} />}
         <span>{connected
-          ? 'Data armada diperbarui otomatis setiap 5 detik.'
+          ? 'Server diperiksa setiap 5 detik. Posisi mengikuti pesan GPS yang diterima.'
           : 'Koneksi terputus. Menampilkan data terakhir yang tersedia.'}</span>
       </div>
     </div>
@@ -216,7 +227,7 @@ function FloatingPill({ selectedVehicle, onCenter }) {
   const speed = selectedVehicle?.speed
   const speedText = speed !== null && speed !== undefined
     ? `${Number(speed).toFixed(1)} km/jam`
-    : 'Diam / Parkir'
+    : '—'
 
   const observedAtText = selectedVehicle?.observedAt
     ? formatTime(selectedVehicle.observedAt)
@@ -304,7 +315,7 @@ function FloatingPill({ selectedVehicle, onCenter }) {
               </div>
               <div className="floating-card-item">
                 <span>Usia GPS</span>
-                <strong>{selectedVehicle?.ageSeconds !== null && selectedVehicle?.ageSeconds !== undefined ? `${selectedVehicle.ageSeconds} detik` : '—'}</strong>
+                <strong>{formatAge(selectedVehicle?.ageSeconds)}</strong>
               </div>
               <div className="floating-card-item">
                 <span>Koordinat</span>
@@ -338,6 +349,10 @@ function FloatingPill({ selectedVehicle, onCenter }) {
 function AnimatedVehicleMarker({ vehicle, icon }) {
   const markerRef = useRef(null)
   const posRef = useRef({ lat: vehicle.position[0], lng: vehicle.position[1] })
+  const statusIcon = useMemo(() => L.divIcon({
+    ...icon.options,
+    className: `${icon.options.className} pm-vehicle-marker--${statusTone(vehicle.locationStatus)}`,
+  }), [icon, vehicle.locationStatus])
 
   useEffect(() => {
     if (!markerRef.current || !vehicle.position) return
@@ -361,7 +376,7 @@ function AnimatedVehicleMarker({ vehicle, icon }) {
   }, [vehicle.position])
 
   return (
-    <Marker ref={markerRef} position={vehicle.position} icon={icon}>
+    <Marker ref={markerRef} position={vehicle.position} icon={statusIcon}>
       <Popup>
         <strong>{vehicle.plate}</strong>
         <p>{vehicle.name}</p>
@@ -472,7 +487,7 @@ function LiveMap({ vehicles, selectedVehicle, focusKey, targets, onCenter, child
           {selectedVehicle?.position && <FocusMap position={selectedVehicle.position} focusKey={focusKey} />}
         </MapContainer>
         <div className="map-legend" aria-label="Legenda peta">
-          <span><i className="legend-pin" /> Posisi kendaraan (Real-time)</span>
+          <span><i className="legend-pin" /> Posisi GPS terakhir</span>
           <span><i className="legend-origin" /> Titik awal</span>
           <span><i className="legend-target" /> Titik singgah</span>
         </div>
@@ -576,6 +591,8 @@ function Dashboard({ data, sync, onRefresh, onNavigate, search, setSearch, filte
             <div><span>Koordinat valid terakhir</span><strong>{formatPosition(selectedVehicle?.position)}</strong></div>
             <div><span>Waktu posisi GPS</span><strong>{formatTime(selectedVehicle?.observedAt)}</strong></div>
             <div><span>Data diterima</span><strong>{formatTime(selectedVehicle?.receivedAt)}</strong></div>
+            <div><span>Pesan perangkat terakhir</span><strong>{formatTime(selectedVehicle?.lastSeenAt)}</strong></div>
+            <div><span>Pesan GPS terbaru</span><strong>{({ valid: 'Fix valid', invalid: 'Belum fix', no_data: 'Belum ada pesan' })[selectedVehicle?.gpsStatus] ?? '—'}</strong></div>
             <div><span>ETA ke tujuan</span><strong>{etaLabel(trips, selectedVehicle?.id)}</strong></div>
           </div>
         </div>

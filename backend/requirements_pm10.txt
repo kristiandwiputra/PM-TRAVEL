@@ -9,3 +9,4 @@ python-dotenv
 pwdlib[argon2]
 PyJWT
 httpx
+paho-mqtt>=2,<3
